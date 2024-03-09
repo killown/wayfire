@@ -1156,7 +1156,6 @@ public:
     // Make sure no leftover events from the activation binding
     // trigger an action in scale
     last_selected_view = nullptr;
-
     grab->grab_input(wf::scene::layer::WORKSPACE);
     if (current_focus_view != wf::get_core().seat->get_active_view()) {
       wf::get_core().default_wm->focus_raise_view(current_focus_view);
