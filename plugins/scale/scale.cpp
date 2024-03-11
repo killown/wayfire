@@ -920,7 +920,6 @@ class wayfire_scale : public wf::per_output_plugin_instance_t,
         filter_views(views);
 
         auto workarea = output->workarea->get_workarea();
-        
         workarea.x += outer_margin; 
         workarea.y += outer_margin; 
         workarea.width -= outer_margin * 2;
