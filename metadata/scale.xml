@@ -48,7 +48,7 @@
 			</option>
 			<option name="outer_margin" type="int">
 				<_short>Outer Margin</_short>
-				<_long>Set the outer margin size.</_long>
+				<_long>The outer margin is the space reserved between the scaled windows and the monitor edges while scale is active.</_long>
 				<default>0</default>
 				<min>0</min>
 			</option>
