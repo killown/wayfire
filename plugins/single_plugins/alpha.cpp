@@ -79,7 +79,8 @@ class wayfire_alpha : public wf::plugin_interface_t
         WFJSON_EXPECT_FIELD(data, "view-id", number_unsigned);
     
         auto view = wf::ipc::find_view_by_id(data["view-id"]);
-        if (!view) {
+        if (!view) 
+        {
             return wf::ipc::json_error("Failed to find view with given id. Maybe it was closed?");
         }
     
