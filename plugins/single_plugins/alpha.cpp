@@ -53,7 +53,7 @@ class wayfire_alpha : public wf::plugin_interface_t
         min_value.set_callback(min_value_changed);
         wf::get_core().bindings->add_axis(modifier, &axis_cb);
         ipc_repo->register_method("wf/alpha/set-view-alpha", ipc_set_view_alpha);
-        ipc_repo->register_method("wf/alpha/set-view-alpha", ipc_get_view_alpha);
+        ipc_repo->register_method("wf/alpha/get-view-alpha", ipc_get_view_alpha);
     }
 
     wf::ipc::method_callback ipc_set_view_alpha = [=] (nlohmann::json data) -> nlohmann::json
