@@ -74,7 +74,8 @@ class wayfire_alpha : public wf::plugin_interface_t
         return wf::ipc::json_ok();
     };
 
-    wf::ipc::method_callback ipc_get_view_alpha = [=](nlohmann::json data) -> nlohmann::json {
+    wf::ipc::method_callback ipc_get_view_alpha = [=](nlohmann::json data) -> nlohmann::json 
+    {
         WFJSON_EXPECT_FIELD(data, "view-id", number_unsigned);
     
         auto view = wf::ipc::find_view_by_id(data["view-id"]);
