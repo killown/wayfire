@@ -183,6 +183,7 @@ class wayfire_alpha : public wf::plugin_interface_t
 
         wf::get_core().bindings->rem_binding(&axis_cb);
         ipc_repo->unregister_method("wf/alpha/set-view-alpha");
+        ipc_repo->unregister_method("wf/alpha/get-view-alpha");
     }
 };
 
