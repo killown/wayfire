@@ -255,7 +255,11 @@ class ipc_rules_t : public wf::plugin_interface_t, public wf::per_output_tracker
         auto active_output = wf::get_core().seat->get_active_output();
         auto response = wf::ipc::json_ok();
     
-        response["info"] = active_output ? output_to_json(active_output) : nullptr;
+        if (active_output) {
+            response["info"] = output_to_json(active_output);
+        } else {
+            response["info"] = nullptr;
+        }
     
         return response;
     };
