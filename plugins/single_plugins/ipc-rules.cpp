@@ -251,16 +251,19 @@ class ipc_rules_t : public wf::plugin_interface_t, public wf::per_output_tracker
         }
     };
 
-    wf::ipc::method_callback get_focused_output = [=](nlohmann::json data) {
+    wf::ipc::method_callback get_focused_output = [=] (nlohmann::json data)
+    {
         auto active_output = wf::get_core().seat->get_active_output();
         auto response = wf::ipc::json_ok();
-    
-        if (active_output) {
+
+        if (active_output)
+        {
             response["info"] = output_to_json(active_output);
-        } else {
+        } else
+        {
             response["info"] = nullptr;
         }
-    
+
         return response;
     };
 
