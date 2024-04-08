@@ -1,12 +1,13 @@
 #include "wayfire/unstable/wlr-surface-node.hpp"
 #include "pixman.h"
-#include "view/view-impl.hpp"
 #include "wayfire/geometry.hpp"
 #include "wayfire/render-manager.hpp"
 #include "wayfire/scene-render.hpp"
 #include "wayfire/scene.hpp"
 #include "wlr-surface-pointer-interaction.hpp"
 #include "wlr-surface-touch-interaction.cpp"
+#include "wayfire/output-layout.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -33,6 +34,7 @@ wf::scene::surface_state_t& wf::scene::surface_state_t::operator =(surface_state
     accumulated_damage = other.accumulated_damage;
     size = other.size;
     src_viewport = other.src_viewport;
+    transform    = other.transform;
 
     other.current_buffer = NULL;
     other.texture = NULL;
@@ -59,6 +61,7 @@ void wf::scene::surface_state_t::merge_state(wlr_surface *surface)
         this->current_buffer = &surface->buffer->base;
         this->texture = surface->buffer->texture;
         this->size    = {surface->current.width, surface->current.height};
+        this->transform = {surface->current.transform};
     } else
     {
         this->current_buffer = NULL;
@@ -129,6 +132,13 @@ wf::scene::wlr_surface_node_t::wlr_surface_node_t(wlr_surface *surface, bool aut
     send_frame_done(false);
 
     current_state.merge_state(surface);
+
+    on_output_remove.set_callback([&] (wf::output_removed_signal *ev)
+    {
+        visibility.erase(ev->output);
+        pending_visibility_delta.erase(ev->output);
+    });
+    wf::get_core().output_layout->connect(&on_output_remove);
 }
 
 void wf::scene::wlr_surface_node_t::apply_state(surface_state_t&& state)
@@ -224,6 +234,7 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
 
     wf::output_t *visible_on;
     damage_callback push_damage;
+    wf::region_t last_visibility;
 
     wf::signal::connection_t<node_damage_signal> on_surface_damage =
         [=] (node_damage_signal *data)
@@ -239,7 +250,17 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
             }
         }
 
-        push_damage(data->region);
+        static wf::option_wrapper_t<bool> use_opaque_optimizations{
+            "workarounds/enable_opaque_region_damage_optimizations"
+        };
+
+        if (use_opaque_optimizations)
+        {
+            push_damage(data->region & last_visibility);
+        } else
+        {
+            push_damage(data->region);
+        }
     };
 
   public:
@@ -248,12 +269,7 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
     {
         if (visible_on)
         {
-            self->visibility[visible_on]++;
-            if (self->surface)
-            {
-                wlr_surface_send_enter(self->surface, visible_on->handle);
-                wlr_fractional_scale_v1_notify_scale(self->surface, visible_on->handle->scale);
-            }
+            self->handle_enter(visible_on);
         }
 
         this->self = self;
@@ -266,12 +282,7 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
     {
         if (visible_on)
         {
-            self->visibility[visible_on]--;
-            if ((self->visibility[visible_on] == 0) && self->surface)
-            {
-                self->visibility.erase(visible_on);
-                wlr_surface_send_leave(self->surface, visible_on->handle);
-            }
+            self->handle_leave(visible_on);
         }
     }
 
@@ -305,8 +316,29 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
         wf::geometry_t geometry = self->get_bounding_box();
         wf::texture_t texture{self->current_state.texture, self->current_state.src_viewport};
 
+        glm::mat4 transform = target.get_orthographic_projection();
+
+        if (self->current_state.transform)
+        {
+            const double cx     = geometry.x + geometry.width / 2.0;
+            const double cy     = geometry.y + geometry.height / 2.0;
+            const double aspect = geometry.width * 1.0 / geometry.height;
+
+            // Center the surface in the coordinate system, rotate (preserving aspect ration)
+            // according to transform, go back
+            glm::mat4 surface_transform =
+                glm::translate(glm::mat4(1.0f), glm::vec3(cx, cy, 0.0f)) *
+                glm::scale(glm::mat4(1.0f), glm::vec3(aspect, 1.0f, 1.0f)) *
+                get_output_matrix_from_transform(self->current_state.transform) *
+                glm::scale(glm::mat4(1.0f), glm::vec3(1.0 / aspect, 1.0f, 1.0f)) *
+                glm::translate(glm::mat4(1.0f), glm::vec3(-cx, -cy, 0.0f));
+            transform = transform * surface_transform;
+        }
+
         OpenGL::render_begin(target);
-        OpenGL::render_texture(texture, target, geometry, glm::vec4(1.f), OpenGL::RENDER_FLAG_CACHED);
+        OpenGL::render_transformed_texture(texture, geometry, transform,
+            glm::vec4(1.f), OpenGL::RENDER_FLAG_CACHED);
+
         // use GL_NEAREST for integer scale.
         // GL_NEAREST makes scaled text blocky instead of blurry, which looks better
         // but only for integer scale.
@@ -379,13 +411,23 @@ class wf::scene::wlr_surface_node_t::wlr_surface_render_instance_t : public rend
     {
         auto our_box = self->get_bounding_box();
         on_frame_done.disconnect();
+        last_visibility = visible & our_box;
 
-        if (!(visible & our_box).empty())
+        static wf::option_wrapper_t<bool> use_opaque_optimizations{
+            "workarounds/enable_opaque_region_damage_optimizations"
+        };
+
+        if (!last_visibility.empty())
         {
             // We are visible on the given output => send wl_surface.frame on output frame, so that clients
             // can draw the next frame.
             output->connect(&on_frame_done);
-            // TODO: compute actually visible region and disable damage reporting for that region.
+
+            if (use_opaque_optimizations && self->surface)
+            {
+                pixman_region32_subtract(visible.to_pixman(), visible.to_pixman(),
+                    &self->surface->opaque_region);
+            }
         }
     }
 };
@@ -410,10 +452,50 @@ wlr_surface*wf::scene::wlr_surface_node_t::get_surface() const
 
 std::optional<wf::texture_t> wf::scene::wlr_surface_node_t::to_texture() const
 {
-    if (this->current_state.current_buffer)
+    if (this->current_state.current_buffer && (this->current_state.transform == WL_OUTPUT_TRANSFORM_NORMAL))
     {
         return wf::texture_t{current_state.texture, current_state.src_viewport};
     }
 
     return {};
+}
+
+// Idea of handling output enter/leave events: when the event comes, we store the number of enters/leaves
+// for outputs and update them on the next idle. The idea is to cache together multiple events, which may
+// be triggered especially when visibility recomputation happens.
+void wf::scene::wlr_surface_node_t::handle_enter(wf::output_t *output)
+{
+    pending_visibility_delta[output]++;
+    idle_update_outputs.run_once([&] () { update_pending_outputs(); });
+}
+
+void wf::scene::wlr_surface_node_t::handle_leave(wf::output_t *output)
+{
+    pending_visibility_delta[output]--;
+    idle_update_outputs.run_once([&] () { update_pending_outputs(); });
+}
+
+void wf::scene::wlr_surface_node_t::update_pending_outputs()
+{
+    for (auto& [wo, delta] : pending_visibility_delta)
+    {
+        if ((visibility[wo] == 0) && (delta > 0) && surface)
+        {
+            wlr_surface_send_enter(surface, wo->handle);
+            wlr_fractional_scale_v1_notify_scale(surface, wo->handle->scale);
+        }
+
+        visibility[wo] += delta;
+        if ((visibility[wo] == 0) && (delta < 0) && surface)
+        {
+            wlr_surface_send_leave(surface, wo->handle);
+        }
+
+        if (visibility[wo] == 0)
+        {
+            visibility.erase(wo);
+        }
+    }
+
+    pending_visibility_delta.clear();
 }

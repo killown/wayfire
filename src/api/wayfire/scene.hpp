@@ -95,6 +95,46 @@ enum class node_flags : int
 using node_flags_bitmask_t = uint64_t;
 
 /**
+ * A list of bitmask flags which indicate what parts of the node state have
+ * changed. The information is useful when updating the scenegraph's state
+ * with wf::scene::update().
+ */
+namespace update_flag
+{
+enum update_flag
+{
+    /**
+     * The list of the node's children changed.
+     */
+    CHILDREN_LIST = (1 << 0),
+    /**
+     * The node's enabled or disabled state changed.
+     */
+    ENABLED       = (1 << 1),
+    /**
+     * The node's input state changed, that is, the result of find_node_at()
+     * may have changed. Typically, this is triggered when a surface is mapped,
+     * unmapped or moved.
+     */
+    INPUT_STATE   = (1 << 2),
+    /**
+     * The node's geometry changed. Changes include not just the bounding box
+     * of the view, but also things like opaque regions.
+     */
+    GEOMETRY      = (1 << 3),
+    /**
+     * A keyboard refocus might be necessary (for example, node removed, keyboard input state changed, etc.).
+     */
+    REFOCUS       = (1 << 4),
+    /**
+     * The update concerns a disabled node (which was disabled before and after the operation, so many
+     * updates (for example regenerating render instances) are not necessary).
+     */
+    MASKED        = (1 << 5),
+};
+}
+
+/**
  * Used as a result of an intersection of the scenegraph with the user input.
  */
 struct input_node_t
@@ -298,6 +338,19 @@ class node_t : public std::enable_shared_from_this<node_t>,
         return children;
     }
 
+    /**
+     * When a scenegraph change happens, core or the plugin which modifies the scenegraph is supposed to call
+     * the @scene::update() function defined below, so that the scene graph can be updated properly, render
+     * instances regenerated, etc.
+     *
+     * However, in many cases a full update is not necessary. For example, when subsurfaces are being
+     * reordered, locally regenerating the render instances within the view render instances is enough.
+     * For such cases, nodes can override this function and change the information which is propagated for
+     * the update to their parent nodes. In the above example of subsurface reordering, the subsurface root
+     * will update all of its render instances manually and not propagate CHILDREN_LIST updates to its parent.
+     */
+    virtual uint32_t optimize_update(uint32_t update_flags);
+
   public:
     node_t(const node_t&) = delete;
     node_t(node_t&&) = delete;
@@ -414,46 +467,12 @@ enum class layer : size_t
     TOP        = 3,
     UNMANAGED  = 4,
     OVERLAY    = 5,
+    LOCK       = 6,
     // For compatibility with workspace-manager, to be removed
-    DWIDGET    = 6,
+    DWIDGET    = 7,
     /** Not a real layer, but a placeholder for the number of layers. */
     ALL_LAYERS,
 };
-
-/**
- * A list of bitmask flags which indicate what parts of the node state have
- * changed. The information is useful when updating the scenegraph's state
- * with wf::scene::update().
- */
-namespace update_flag
-{
-enum update_flag
-{
-    /**
-     * The list of the node's children changed.
-     */
-    CHILDREN_LIST = (1 << 0),
-    /**
-     * The node's enabled or disabled state changed.
-     */
-    ENABLED       = (1 << 1),
-    /**
-     * The node's input state changed, that is, the result of find_node_at()
-     * may have changed. Typically, this is triggered when a surface is mapped,
-     * unmapped or moved.
-     */
-    INPUT_STATE   = (1 << 2),
-    /**
-     * The node's geometry changed. Changes include not just the bounding box
-     * of the view, but also things like opaque regions.
-     */
-    GEOMETRY      = (1 << 3),
-    /**
-     * A keyboard refocus might be necessary (for example, node removed, keyboard input state changed, etc.).
-     */
-    REFOCUS       = (1 << 4),
-};
-}
 
 /**
  * A signal that the root node has been updated.

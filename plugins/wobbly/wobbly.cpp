@@ -530,11 +530,11 @@ class wobbly_state_free_t : public iwobbly_state_t
 };
 }
 
-class wobbly_transformer_node_t : public wf::scene::floating_inner_node_t
+class wobbly_transformer_node_t : public wf::scene::transformer_base_node_t
 {
   public:
     wobbly_transformer_node_t(wayfire_toplevel_view view,
-        OpenGL::program_t *wobbly_prog) : floating_inner_node_t(false)
+        OpenGL::program_t *wobbly_prog) : transformer_base_node_t(false)
     {
         this->view = view;
         this->wobbly_program = wobbly_prog;
@@ -982,7 +982,7 @@ class wayfire_wobbly : public wf::plugin_interface_t
     {
         for (auto& view : wf::get_core().get_all_views())
         {
-            auto wobbly = view->get_transformed_node()->get_transformer<wobbly_transformer_node_t>();
+            auto wobbly = view->get_transformed_node()->get_transformer<wobbly_transformer_node_t>("wobbly");
             if (wobbly)
             {
                 wobbly->destroy_self();

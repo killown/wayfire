@@ -97,7 +97,7 @@ void transform_manager_node_t::_rem_transformer(
 }
 
 view_2d_transformer_t::view_2d_transformer_t(wayfire_view view) :
-    floating_inner_node_t(false)
+    transformer_base_node_t(false)
 {
     this->view = view;
 }
@@ -184,7 +184,7 @@ class view_2d_render_instance_t :
 
     void transform_damage_region(wf::region_t& damage) override
     {
-        transform_linear_damage(self, damage);
+        transform_linear_damage(self.get(), damage);
     }
 
     void render(const wf::render_target_t& target,
@@ -248,7 +248,7 @@ glm::mat4 view_3d_transformer_t::default_proj_matrix()
 }
 
 view_3d_transformer_t::view_3d_transformer_t(wayfire_view view) :
-    scene::floating_inner_node_t(false)
+    scene::transformer_base_node_t(false)
 {
     this->view = view;
     view_proj  = default_proj_matrix() * default_view_matrix();
@@ -277,6 +277,7 @@ glm::mat4 view_3d_transformer_t::calculate_total_transform()
 {
     auto bbox   = get_children_bounding_box();
     float scale = std::max(bbox.width, bbox.height);
+    scale = std::max(scale, 1.0f);
     glm::mat4 depth_scale = glm::scale(glm::mat4(1.0), {1, 1, 2.0 / scale});
     return translation * view_proj * depth_scale * rotation * scaling;
 }
@@ -388,7 +389,7 @@ class view_3d_render_instance_t :
 
     void transform_damage_region(wf::region_t& damage) override
     {
-        transform_linear_damage(self, damage);
+        transform_linear_damage(self.get(), damage);
     }
 
     void render(const wf::render_target_t& target,

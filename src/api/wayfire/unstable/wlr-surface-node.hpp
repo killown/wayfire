@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wayfire/geometry.hpp"
+#include "wayfire/signal-definitions.hpp"
 #include "wayfire/util.hpp"
 #include "wayfire/view-transform.hpp"
 #include <wayfire/scene.hpp>
@@ -20,6 +21,7 @@ struct surface_state_t
     wf::region_t accumulated_damage;
     wf::dimensions_t size = {0, 0};
     std::optional<wlr_fbox> src_viewport;
+    wl_output_transform transform = WL_OUTPUT_TRANSFORM_NORMAL;
 
     // Read the current surface state, get a lock on the current surface buffer (releasing any old locks),
     // and accumulate damage.
@@ -71,8 +73,17 @@ class wlr_surface_node_t : public node_t, public zero_copy_texturable_node_t
     std::unique_ptr<pointer_interaction_t> ptr_interaction;
     std::unique_ptr<touch_interaction_t> tch_interaction;
     wlr_surface *surface;
+
     std::map<wf::output_t*, int> visibility;
+    std::map<wf::output_t*, int> pending_visibility_delta;
+    wf::signal::connection_t<wf::output_removed_signal> on_output_remove;
+
     class wlr_surface_render_instance_t;
+    void handle_enter(wf::output_t *output);
+    void handle_leave(wf::output_t *output);
+    void update_pending_outputs();
+    wf::wl_idle_call idle_update_outputs;
+
     wf::wl_listener_wrapper on_surface_destroyed;
     wf::wl_listener_wrapper on_surface_commit;
 

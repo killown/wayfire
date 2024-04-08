@@ -1,21 +1,17 @@
-#include "view/surface-impl.hpp"
 #include "wayfire/core.hpp"
-#include "../core/core-impl.hpp"
 #include "view-impl.hpp"
 #include "wayfire/scene-input.hpp"
 #include "wayfire/scene-render.hpp"
 #include "wayfire/scene.hpp"
 #include "wayfire/signal-definitions.hpp"
+#include "wayfire/unstable/wlr-surface-controller.hpp"
 #include "wayfire/unstable/wlr-surface-node.hpp"
 #include "wayfire/view.hpp"
-#include "wayfire/workspace-set.hpp"
 #include "wayfire/output-layout.hpp"
 #include <memory>
 #include <wayfire/util/log.hpp>
 #include <wayfire/view-helpers.hpp>
 #include <wayfire/scene-operations.hpp>
-
-#include "xdg-shell.hpp"
 
 void wf::view_implementation::emit_view_map_signal(wayfire_view view, bool has_position)
 {

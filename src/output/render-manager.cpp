@@ -10,9 +10,9 @@
 #include "wayfire/view.hpp"
 #include "wayfire/output.hpp"
 #include "wayfire/util.hpp"
-#include "wayfire/workspace-set.hpp"
 #include "../core/opengl-priv.hpp"
 #include "../main.hpp"
+#include "wayfire/workspace-set.hpp"
 #include <algorithm>
 #include <wayfire/nonstd/reverse.hpp>
 #include <wayfire/nonstd/safe-list.hpp>
@@ -42,15 +42,22 @@ struct swapchain_damage_manager_t
     output_t *wo;
 
     bool pending_gamma_lut = false;
+    wf::wl_idle_call idle_recompute_visibility;
 
     void update_scenegraph(uint32_t update_mask)
     {
+        if (update_mask & scene::update_flag::MASKED)
+        {
+            return;
+        }
+
         constexpr uint32_t recompute_instances_on = scene::update_flag::CHILDREN_LIST |
             scene::update_flag::ENABLED;
         constexpr uint32_t recompute_visibility_on = recompute_instances_on | scene::update_flag::GEOMETRY;
 
         if (update_mask & recompute_instances_on)
         {
+            LOGC(RENDER, "Output ", wo->to_string(), ": regenerating instances.");
             auto root = wf::get_core().scene();
             scene::damage_callback push_damage = [=] (wf::region_t region)
             {
@@ -66,11 +73,15 @@ struct swapchain_damage_manager_t
 
         if (update_mask & recompute_visibility_on)
         {
-            wf::region_t region = this->wo->get_layout_geometry();
-            for (auto& inst : render_instances)
+            idle_recompute_visibility.run_once([=] ()
             {
-                inst->compute_visibility(wo, region);
-            }
+                LOGC(RENDER, "Output ", wo->to_string(), ": recomputing visibility.");
+                wf::region_t region = this->wo->get_layout_geometry();
+                for (auto& inst : render_instances)
+                {
+                    inst->compute_visibility(wo, region);
+                }
+            });
         }
     }
 
@@ -632,7 +643,7 @@ class depth_buffer_manager_t
     {
         /* If the backend doesn't have its own framebuffer, then the
          * framebuffer is created with a depth buffer. */
-        if (fb == 0)
+        if ((fb == 0) || (required_counter <= 0))
         {
             return;
         }
@@ -640,17 +651,20 @@ class depth_buffer_manager_t
         attach_buffer(find_buffer(fb), fb, width, height);
     }
 
+    void set_required(bool require)
+    {
+        required_counter += require ? 1 : -1;
+        if (required_counter <= 0)
+        {
+            free_all_buffers();
+        }
+    }
+
     depth_buffer_manager_t() = default;
 
     ~depth_buffer_manager_t()
     {
-        OpenGL::render_begin();
-        for (auto& buffer : buffers)
-        {
-            GL_CALL(glDeleteTextures(1, &buffer.tex));
-        }
-
-        OpenGL::render_end();
+        free_all_buffers();
     }
 
     depth_buffer_manager_t(const depth_buffer_manager_t &) = delete;
@@ -660,6 +674,7 @@ class depth_buffer_manager_t
 
   private:
     static constexpr size_t MAX_BUFFERS = 3;
+    int required_counter = 0;
 
     struct depth_buffer_t
     {
@@ -671,6 +686,25 @@ class depth_buffer_manager_t
         int64_t last_used = 0;
     };
 
+    void free_buffer(depth_buffer_t& buffer)
+    {
+        if (buffer.tex != (GLuint) - 1)
+        {
+            GL_CALL(glDeleteTextures(1, &buffer.tex));
+        }
+    }
+
+    void free_all_buffers()
+    {
+        OpenGL::render_begin();
+        for (auto& b : buffers)
+        {
+            free_buffer(b);
+        }
+
+        OpenGL::render_end();
+    }
+
     void attach_buffer(depth_buffer_t& buffer, int fb, int width, int height)
     {
         if ((buffer.attached_to == fb) &&
@@ -680,11 +714,7 @@ class depth_buffer_manager_t
             return;
         }
 
-        if (buffer.tex != (GLuint) - 1)
-        {
-            GL_CALL(glDeleteTextures(1, &buffer.tex));
-        }
-
+        free_buffer(buffer);
         GL_CALL(glGenTextures(1, &buffer.tex));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, buffer.tex));
         GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
@@ -1316,6 +1346,11 @@ wlr_box render_manager::get_ws_box(wf::point_t ws) const
 wf::render_target_t render_manager::get_target_framebuffer() const
 {
     return pimpl->postprocessing->get_target_framebuffer();
+}
+
+void render_manager::set_require_depth_buffer(bool require)
+{
+    return pimpl->depth_buffer_manager->set_required(require);
 }
 } // namespace wf
 

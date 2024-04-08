@@ -35,8 +35,8 @@ wayfire_sources = ['geometry.cpp',
                    'core/seat/touch.cpp',
                    'core/seat/seat.cpp',
 
-                   'view/surface.cpp',
-                   'view/subsurface.cpp',
+                   'view/wlr-surface-controller.cpp',
+                   'view/wlr-subsurface-controller.cpp',
                    'view/view.cpp',
                    'view/toplevel-view.cpp',
                    'view/view-impl.cpp',
@@ -64,7 +64,7 @@ wayfire_sources = ['geometry.cpp',
 
 wayfire_dependencies = [wayland_server, wlroots, xkbcommon, libinput,
                        pixman, drm, egl, glesv2, glm, wf_protos, libdl,
-                       wfconfig, libinotify, backtrace, wfutils, xcb, wftouch]
+                       wfconfig, libinotify, backtrace, wfutils, xcb, wftouch, json]
 
 if conf_data.get('BUILD_WITH_IMAGEIO')
     wayfire_dependencies += [jpeg, png]

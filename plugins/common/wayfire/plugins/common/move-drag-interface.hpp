@@ -68,6 +68,14 @@ struct drag_focus_output_signal
 };
 
 /**
+ * Emitted on core_drag_t when input motion is triggered.
+ */
+struct drag_motion_signal
+{
+    wf::point_t current_position;
+};
+
+/**
  * name: snap-off
  * on: core_drag_t
  * when: Emitted if snap-off is enabled and the view was moved more than the
@@ -152,7 +160,7 @@ inline static wf::pointf_t find_relative_grab(
  * It is primarily used to scale the view is a plugin needs it, and also to keep it
  * centered around the `grab_position`.
  */
-class scale_around_grab_t : public wf::scene::floating_inner_node_t
+class scale_around_grab_t : public wf::scene::transformer_base_node_t
 {
   public:
     /**
@@ -160,6 +168,8 @@ class scale_around_grab_t : public wf::scene::floating_inner_node_t
      * A factor 2.0 means that the view will have half of its width and height.
      */
     wf::animation::simple_animation_t scale_factor{wf::create_option(300)};
+
+    wf::animation::simple_animation_t alpha_factor{wf::create_option(300)};
 
     /**
      * A place relative to the view, where it is grabbed.
@@ -175,7 +185,7 @@ class scale_around_grab_t : public wf::scene::floating_inner_node_t
      */
     wf::point_t grab_position;
 
-    scale_around_grab_t() : floating_inner_node_t(false)
+    scale_around_grab_t() : transformer_base_node_t(false)
     {}
 
     std::string stringify() const override
@@ -234,7 +244,7 @@ class scale_around_grab_t : public wf::scene::floating_inner_node_t
             for (auto& rect : region)
             {
                 target.logic_scissor(wlr_box_from_pixman_box(rect));
-                OpenGL::render_texture(tex, target, bbox);
+                OpenGL::render_texture(tex, target, bbox, glm::vec4{1, 1, 1, (double)self->alpha_factor});
             }
 
             OpenGL::render_end();
@@ -296,9 +306,8 @@ inline std::vector<wayfire_toplevel_view> get_target_views(wayfire_toplevel_view
 // coordinates and thus we just need to schedule them for rendering.
 class dragged_view_node_t : public wf::scene::node_t
 {
-    std::vector<dragged_view_t> views;
-
   public:
+    std::vector<dragged_view_t> views;
     dragged_view_node_t(std::vector<dragged_view_t> views) : node_t(false)
     {
         this->views = views;
@@ -312,7 +321,8 @@ class dragged_view_node_t : public wf::scene::node_t
     void gen_render_instances(std::vector<scene::render_instance_uptr>& instances,
         scene::damage_callback push_damage, wf::output_t *output = nullptr) override
     {
-        instances.push_back(std::make_unique<dragged_view_render_instance_t>(this, push_damage, output));
+        instances.push_back(std::make_unique<dragged_view_render_instance_t>(
+            std::dynamic_pointer_cast<dragged_view_node_t>(shared_from_this()), push_damage, output));
     }
 
     wf::geometry_t get_bounding_box() override
@@ -341,8 +351,8 @@ class dragged_view_node_t : public wf::scene::node_t
         };
 
       public:
-        dragged_view_render_instance_t(dragged_view_node_t *self, wf::scene::damage_callback push_damage,
-            wf::output_t *shown_on)
+        dragged_view_render_instance_t(std::shared_ptr<dragged_view_node_t> self,
+            wf::scene::damage_callback push_damage, wf::output_t *shown_on)
         {
             auto push_damage_child = [=] (wf::region_t child_damage)
             {
@@ -466,6 +476,9 @@ class core_drag_t : public signal::provider_t
     {
         wf::dassert(tentative_grab_position.has_value(),
             "First, the drag operation should be set as pending!");
+        wf::dassert(grab_view->is_mapped(), "Dragged view should be mapped!");
+        wf::dassert(!this->view, "Drag operation already in progress!");
+
         auto bbox = wf::view_bounding_box_up_to(grab_view, "wobbly");
         wf::point_t rel_grab_pos = {
             int(bbox.x + relative.x * bbox.width),
@@ -496,6 +509,7 @@ class core_drag_t : public signal::provider_t
                 wf::view_bounding_box_up_to(v, "wobbly"), rel_grab_pos);
             tr->grab_position = *tentative_grab_position;
             tr->scale_factor.animate(options.initial_scale, options.initial_scale);
+            tr->alpha_factor.animate(1, 1);
             v->get_transformed_node()->add_transformer(
                 tr, wf::TRANSFORMER_HIGHLEVEL - 1);
 
@@ -578,6 +592,10 @@ class core_drag_t : public signal::provider_t
         }
 
         update_current_output(to);
+
+        drag_motion_signal data;
+        data.current_position = to;
+        emit(&data);
     }
 
     double distance_to_grab_origin(wf::point_t to) const
@@ -609,6 +627,7 @@ class core_drag_t : public signal::provider_t
 
         // Remove overlay hooks and damage outputs BEFORE popping the transformer
         wf::scene::remove_child(render_node);
+        render_node->views.clear();
         render_node = nullptr;
 
         for (auto& v : all_views)
@@ -638,7 +657,12 @@ class core_drag_t : public signal::provider_t
         wf::get_core().default_wm->set_view_grabbed(view, false);
         view = nullptr;
         all_views.clear();
-        current_output = nullptr;
+        if (current_output)
+        {
+            current_output->render->rem_effect(&on_pre_frame);
+            current_output = nullptr;
+        }
+
         wf::get_core().set_cursor("default");
 
         // Lastly, let the plugins handle what happens on drag end.
@@ -649,11 +673,12 @@ class core_drag_t : public signal::provider_t
         this->tentative_grab_position = {};
     }
 
-    void set_scale(double new_scale)
+    void set_scale(double new_scale, double alpha = 1.0)
     {
         for (auto& view : all_views)
         {
             view.transformer->scale_factor.animate(new_scale);
+            view.transformer->alpha_factor.animate(alpha);
         }
     }
 
@@ -740,9 +765,11 @@ inline void adjust_view_on_output(drag_done_signal *ev)
         return;
     }
 
-    if (parent->get_output() != ev->focused_output)
+    const bool change_output = parent->get_output() != ev->focused_output;
+    auto old_wset = parent->get_wset();
+    if (change_output)
     {
-        move_view_to_output(parent, ev->focused_output, false);
+        start_move_view_to_wset(parent, ev->focused_output->wset());
     }
 
     // Calculate the position we're leaving the view on
@@ -800,6 +827,11 @@ inline void adjust_view_on_output(drag_done_signal *ev)
     for (auto& v : parent->enumerate_views())
     {
         ev->focused_output->wset()->move_to_workspace(v, target_ws);
+    }
+
+    if (change_output)
+    {
+        emit_view_moved_to_wset(parent, old_wset, ev->focused_output->wset());
     }
 
     wf::get_core().default_wm->focus_raise_view(focus_view);

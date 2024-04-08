@@ -1,5 +1,4 @@
 #include <wayfire/per-output-plugin.hpp>
-#include <cstdlib>
 #include <memory>
 #include <wayfire/config/types.hpp>
 #include <wayfire/plugin.hpp>
@@ -16,10 +15,8 @@
 #include "wayfire/core.hpp"
 #include "wayfire/debug.hpp"
 #include "wayfire/geometry.hpp"
-#include "wayfire/object.hpp"
 #include "wayfire/opengl.hpp"
 #include "wayfire/region.hpp"
-#include "wayfire/scene-operations.hpp"
 #include "wayfire/scene-render.hpp"
 #include "wayfire/scene.hpp"
 #include "wayfire/signal-provider.hpp"
@@ -44,13 +41,24 @@ namespace wf
 {
 namespace scene
 {
-class blur_node_t : public floating_inner_node_t
+class blur_node_t : public transformer_base_node_t
 {
   public:
     blur_algorithm_provider provider;
-    blur_node_t(blur_algorithm_provider provider) : floating_inner_node_t(false)
+    blur_node_t(blur_algorithm_provider provider) : transformer_base_node_t(false)
     {
         this->provider = provider;
+    }
+
+    ~blur_node_t()
+    {
+        OpenGL::render_begin();
+        for (auto& buffer : saved_pixels)
+        {
+            buffer.pixels.release();
+        }
+
+        OpenGL::render_end();
     }
 
     std::string stringify() const override
@@ -60,22 +68,43 @@ class blur_node_t : public floating_inner_node_t
 
     void gen_render_instances(std::vector<render_instance_uptr>& instances,
         damage_callback push_damage, wf::output_t *shown_on) override;
+
+    struct saved_pixels_t
+    {
+        wf::framebuffer_t pixels;
+        wf::region_t region;
+        bool taken = false;
+    };
+
+    std::list<saved_pixels_t> saved_pixels;
+    saved_pixels_t *acquire_saved_pixel_buffer()
+    {
+        auto it = std::find_if(saved_pixels.begin(), saved_pixels.end(),
+            [] (const saved_pixels_t& buffer) { return !buffer.taken; });
+
+        if (it != saved_pixels.end())
+        {
+            it->taken = true;
+            return &(*it);
+        }
+
+        saved_pixels.emplace_back();
+        saved_pixels.back().taken = true;
+        return &saved_pixels.back();
+    }
+
+    void release_saved_pixel_buffer(saved_pixels_t *buffer)
+    {
+        buffer->taken = false;
+    }
 };
 
 class blur_render_instance_t : public transformer_render_instance_t<blur_node_t>
 {
-    wf::framebuffer_t saved_pixels;
-    wf::region_t saved_pixels_region;
+    blur_node_t::saved_pixels_t *saved_pixels = nullptr;
 
   public:
     using transformer_render_instance_t::transformer_render_instance_t;
-    ~blur_render_instance_t()
-    {
-        OpenGL::render_begin();
-        saved_pixels.release();
-        OpenGL::render_end();
-    }
-
     bool is_fully_opaque(wf::region_t damage)
     {
         if (self->get_children().size() == 1)
@@ -146,7 +175,8 @@ class blur_render_instance_t : public transformer_render_instance_t<blur_node_t>
         // Actual region which will be repainted by this render instance.
         wf::region_t we_repaint = padded_region;
 
-        saved_pixels_region =
+        this->saved_pixels   = self->acquire_saved_pixel_buffer();
+        saved_pixels->region =
             target.framebuffer_region_from_geometry_region(padded_region) ^
             target.framebuffer_region_from_geometry_region(damage);
 
@@ -154,12 +184,12 @@ class blur_render_instance_t : public transformer_render_instance_t<blur_node_t>
         damage |= padded_region;
 
         OpenGL::render_begin();
-        saved_pixels.allocate(target.viewport_width, target.viewport_height);
-        saved_pixels.bind();
+        saved_pixels->pixels.allocate(target.viewport_width, target.viewport_height);
+        saved_pixels->pixels.bind();
         GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, target.fb));
 
         /* Copy pixels in padded_region from target_fb to saved_pixels. */
-        for (const auto& box : saved_pixels_region)
+        for (const auto& box : saved_pixels->region)
         {
             GL_CALL(glBlitFramebuffer(
                 box.x1, target.viewport_height - box.y2,
@@ -192,10 +222,10 @@ class blur_render_instance_t : public transformer_render_instance_t<blur_node_t>
         // rendered with expanded damage and artifacts on the edges.
         // saved_pixels has the the padded region of pixels to overwrite the
         // artifacts that blurring has left behind.
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, saved_pixels.fb));
+        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, saved_pixels->pixels.fb));
 
         /* Copy pixels back from saved_pixels to target_fb. */
-        for (const auto& box : saved_pixels_region)
+        for (const auto& box : saved_pixels->region)
         {
             GL_CALL(glBlitFramebuffer(
                 box.x1, box.y1, box.x2, box.y2,
@@ -205,7 +235,9 @@ class blur_render_instance_t : public transformer_render_instance_t<blur_node_t>
         }
 
         /* Reset stuff */
-        saved_pixels_region.clear();
+        saved_pixels->region.clear();
+        self->release_saved_pixel_buffer(saved_pixels);
+        saved_pixels = NULL;
         OpenGL::render_end();
     }
 

@@ -227,6 +227,10 @@ void parse_extended_debugging(const std::vector<std::string>& categories)
         {
             LOGD("Enabling extended debugging for input method events");
             wf::log::enabled_categories.set((size_t)wf::log::logging_category::IM, 1);
+        } else if (cat == "render")
+        {
+            LOGD("Enabling extended debugging for render events");
+            wf::log::enabled_categories.set((size_t)wf::log::logging_category::RENDER, 1);
         } else
         {
             LOGE("Unrecognized debugging category \"", cat, "\"");
@@ -234,6 +238,17 @@ void parse_extended_debugging(const std::vector<std::string>& categories)
     }
 }
 
+// Override assert() handler to be more useful and print a trace.
+// extern "C" {
+// void __assert_fail(const char* expr, const char *filename, unsigned int line, const char *assert_func)
+// {
+// LOGE("Assertion failed: ", expr, " at ", filename, ":", line, " in ", assert_func);
+// wf::print_trace(false);
+// std::_Exit(-1);
+// }
+// }
+
+// Override exception handling to be more useful and print a trace.
 // extern "C" {
 // void __cxa_throw(void *ex, void *info, void (*dest)(void*))
 // {

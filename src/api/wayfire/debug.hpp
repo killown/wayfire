@@ -1,8 +1,12 @@
 #ifndef DEBUG_HPP
 #define DEBUG_HPP
 
-#ifndef WAYFIRE_PLUGIN
-    #include "config.h"
+// WF_USE_CONFIG_H is set only when building Wayfire itself, external plugins
+// need to use <wayfire/config.h>
+#ifdef WF_USE_CONFIG_H
+    #include <config.h>
+#else
+    #include <wayfire/config.h>
 #endif
 
 #define nonull(x) ((x) ? (x) : ("nil"))
@@ -59,6 +63,8 @@ enum class logging_category : size_t
     LSHELL  = 9,
     // Input-Method-related events
     IM      = 10,
+    // Rendering-related events
+    RENDER  = 11,
     TOTAL,
 };
 

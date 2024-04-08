@@ -46,12 +46,18 @@ void wf::scene::translation_node_t::set_offset(wf::point_t offset)
     this->offset = offset;
 }
 
+uint32_t wf::scene::translation_node_t::optimize_update(uint32_t flags)
+{
+    return optimize_nested_render_instances(shared_from_this(), flags);
+}
+
 // ----------------------------------------- Render instance -------------------------------------------------
 wf::scene::translation_node_instance_t::translation_node_instance_t(
     translation_node_t *self, damage_callback push_damage, wf::output_t *shown_on)
 {
-    this->self = self;
+    this->self = std::dynamic_pointer_cast<translation_node_t>(self->shared_from_this());
     this->push_damage = push_damage;
+    this->shown_on    = shown_on;
 
     on_node_damage = [=] (wf::scene::node_damage_signal *data)
     {
@@ -59,6 +65,17 @@ wf::scene::translation_node_instance_t::translation_node_instance_t(
     };
     self->connect(&on_node_damage);
 
+    on_regen_instances = [=] (auto)
+    {
+        regen_instances();
+    };
+    self->connect(&on_regen_instances);
+    regen_instances();
+}
+
+void wf::scene::translation_node_instance_t::regen_instances()
+{
+    children.clear();
     auto push_damage_child = [=] (wf::region_t child_damage)
     {
         child_damage += self->get_offset();

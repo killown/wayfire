@@ -28,11 +28,12 @@ pangocairo     = dependency('pangocairo')
 drm            = dependency('libdrm')
 egl            = dependency('egl')
 glesv2         = dependency('glesv2')
-glm            = dependency('glm')
+glm            = dependency('glm', required: false)
 libinput       = dependency('libinput', version: '>=1.7.0')
 pixman         = dependency('pixman-1')
 xkbcommon      = dependency('xkbcommon')
 libdl          = meson.get_compiler('cpp').find_library('dl')
+json           = dependency('nlohmann_json', version: '>= 3.11.2')
 
 # We're not to use system wlroots: So we'll use the subproject
 if get_option('use_system_wlroots').disabled()
@@ -53,6 +54,39 @@ elif get_option('use_system_wlroots').auto()
 	endif
 endif
 
+wlroots_features = {
+  'xwayland': false,
+  'drm_backend': false,
+  'gles2_renderer': false,
+  'libinput_backend': false,
+  'session': false,
+  'x11_backend': false,
+}
+
+foreach name, _ : wlroots_features
+  var_name = 'have_' + name.underscorify()
+  wlroots_features += { name: wlroots.get_variable(pkgconfig: var_name, internal: var_name) == 'true' }
+endforeach
+
+required_wlroots_features= [
+  'drm_backend',
+  'gles2_renderer',
+  'session',
+  'libinput_backend',
+]
+missing_wlroots_features = []
+
+# Required features based on currently exposed public api
+foreach required_feature : required_wlroots_features
+  if not wlroots_features[required_feature]
+    missing_wlroots_features += required_feature
+  endif
+endforeach
+
+if missing_wlroots_features.length() > 0
+  error('wlroots is missing the following required features: @0@'.format(' '.join(missing_wlroots_features)))
+endif
+
 # We're not to use system wlroots: So we'll use the subproject
 if get_option('use_system_wfconfig').disabled()
 	use_system_wfconfig = false
@@ -70,6 +104,12 @@ elif get_option('use_system_wfconfig').auto()
 		wfconfig = subproject('wf-config').get_variable('wfconfig')
 	endif
 endif
+
+if not glm.found() and not meson.get_compiler('cpp').check_header('glm/glm.hpp')
+  error('GLM not found, and directly using the header \'glm/glm.hpp\' is not possible.')
+endif
+
+backtrace = meson.get_compiler('cpp').find_library('execinfo', required: false)
 
 wfutils = subproject('wf-utils').get_variable('wfutils')
 wftouch = subproject('wf-touch').get_variable('wftouch')
@@ -138,27 +178,11 @@ wayfire_conf_inc = include_directories(['.'])
 
 add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
 
-have_xwayland = false
-have_x11_backend = false
-if use_system_wlroots
-  have_xwayland = cpp.get_define('WLR_HAS_XWAYLAND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
-  have_x11_backend = cpp.get_define('WLR_HAS_X11_BACKEND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
-else
-  have_xwayland = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_XWAYLAND', false) == 1
-  have_x11_backend = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_X11_BACKEND', false) == 1
-endif
-
-if get_option('xwayland').enabled() and not have_xwayland
+if get_option('xwayland').enabled() and not wlroots_features['xwayland']
   error('Cannot enable Xwayland in wayfire: wlroots has been built without Xwayland support')
 endif
 
-if get_option('xwayland').enabled()
-  have_xwayland = true
-elif get_option('xwayland').disabled()
-  have_xwayland = false
-endif
-
-if have_xwayland
+if get_option('xwayland').enabled() or (get_option('xwayland').auto() and wlroots_features['xwayland'])
   xcb = dependency('xcb')
   conf_data.set('WF_HAS_XWAYLAND', 1)
 else
@@ -201,8 +225,8 @@ summary = [
 	'',
     'system wfconfig: @0@'.format(use_system_wfconfig),
     ' system wlroots: @0@'.format(use_system_wlroots),
-    '       xwayland: @0@'.format(have_xwayland),
-    '    x11-backend: @0@'.format(have_x11_backend),
+    '       xwayland: @0@'.format(wlroots_features['xwayland']),
+    '    x11-backend: @0@'.format(wlroots_features['x11_backend']),
     '        imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO')),
     '         gles32: @0@'.format(conf_data.get('USE_GLES32')),
     '    print trace: @0@'.format(print_trace),
