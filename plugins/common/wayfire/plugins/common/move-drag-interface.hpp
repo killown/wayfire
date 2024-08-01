@@ -440,6 +440,11 @@ class core_drag_t : public signal::provider_t
   public:
     std::optional<wf::point_t> tentative_grab_position;
 
+    core_drag_t()
+    {
+        wf::get_core().output_layout->connect(&on_output_removed);
+    }
+
     /**
      * A button has been pressed which might start a drag action.
      */
@@ -709,7 +714,11 @@ class core_drag_t : public signal::provider_t
     {
         wf::pointf_t origin = {1.0 * grab.x, 1.0 * grab.y};
         auto output = wf::get_core().output_layout->get_output_coords_at(origin, origin);
+        update_current_output(output);
+    }
 
+    void update_current_output(wf::output_t *output)
+    {
         if (output != current_output)
         {
             if (current_output)
@@ -719,16 +728,15 @@ class core_drag_t : public signal::provider_t
 
             drag_focus_output_signal data;
             data.previous_focus_output = current_output;
-
             current_output    = output;
             data.focus_output = output;
-            wf::get_core().seat->focus_output(output);
-            emit(&data);
-
             if (output)
             {
-                current_output->render->add_effect(&on_pre_frame, OUTPUT_EFFECT_PRE);
+                wf::get_core().seat->focus_output(output);
+                output->render->add_effect(&on_pre_frame, OUTPUT_EFFECT_PRE);
             }
+
+            emit(&data);
         }
     }
 
@@ -746,6 +754,14 @@ class core_drag_t : public signal::provider_t
     wf::signal::connection_t<view_unmapped_signal> on_view_unmap = [=] (auto *ev)
     {
         handle_input_released();
+    };
+
+    wf::signal::connection_t<output_removed_signal> on_output_removed = [=] (wf::output_removed_signal *ev)
+    {
+        if (current_output == ev->output)
+        {
+            update_current_output(nullptr);
+        }
     };
 };
 

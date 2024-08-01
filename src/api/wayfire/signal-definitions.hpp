@@ -3,6 +3,7 @@
 
 #include "wayfire/view.hpp"
 #include "wayfire/output.hpp"
+#include "wayfire/seat.hpp"
 
 /**
  * Documentation of signals emitted from core components.
@@ -171,6 +172,23 @@ struct post_input_event_signal
 };
 
 /**
+ * Emitted on core when the pointer focus changes.
+ */
+struct pointer_focus_changed_signal
+{
+    wf::scene::node_ptr new_focus;
+};
+
+/**
+ * Emitted on core when the touch focus changes.
+ */
+struct touch_focus_changed_signal
+{
+    wf::scene::node_ptr new_focus;
+    int32_t finger_id;
+};
+
+/**
  * on: core
  * when: When the config file is reloaded
  */
@@ -184,6 +202,7 @@ struct reload_config_signal
 struct keyboard_focus_changed_signal
 {
     wf::scene::node_ptr new_focus;
+    keyboard_focus_reason reason = keyboard_focus_reason::UNKNOWN;
 };
 
 /**

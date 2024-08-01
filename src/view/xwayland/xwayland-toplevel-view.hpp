@@ -282,6 +282,11 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
         wf::toplevel_view_interface_t::set_activated(active);
     }
 
+    void handle_dissociate() override
+    {
+        on_surface_commit.disconnect();
+    }
+
     virtual void destroy() override
     {
         on_set_parent.disconnect();
@@ -293,6 +298,7 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
         on_request_maximize.disconnect();
         on_request_minimize.disconnect();
         on_request_fullscreen.disconnect();
+        on_surface_commit.disconnect();
 
         wayfire_xwayland_view_internal_base::destroy();
     }
@@ -325,54 +331,39 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
 
     void handle_map_request(wlr_surface*) override
     {
+        LOGC(VIEWS, "Start mapping ", self());
         this->main_surface = std::make_shared<wf::scene::wlr_surface_node_t>(xw->surface, false);
         priv->set_mapped_surface_contents(main_surface);
         toplevel->set_main_surface(main_surface);
         toplevel->pending().mapped = true;
 
-        if (xw->fullscreen)
+        bool map_maximized = xw->maximized_horz || xw->maximized_vert;
+        bool map_fs = xw->fullscreen;
+
+        if (map_maximized || map_fs)
         {
             store_xw_geometry_unmapped();
-            toplevel->pending().fullscreen = true;
-            if (get_output())
-            {
-                toplevel->pending().geometry = get_output()->workarea->get_workarea();
-            }
-
-            wf::get_core().default_wm->fullscreen_request({this}, get_output(), true);
-        } else if (xw->maximized_horz && xw->maximized_vert)
-        {
-            store_xw_geometry_unmapped();
-            toplevel->pending().tiled_edges = wf::TILED_EDGES_ALL;
-            if (get_output())
-            {
-                toplevel->pending().geometry = get_output()->workarea->get_workarea();
-            }
-        } else
-        {
-            wf::geometry_t desired_geometry = {
-                xw->x,
-                xw->y,
-                xw->surface->current.width,
-                xw->surface->current.height
-            };
-
-            if (get_output())
-            {
-                desired_geometry = desired_geometry + -wf::origin(get_output()->get_layout_geometry());
-                desired_geometry =
-                    wf::expand_geometry_by_margins(desired_geometry, toplevel->pending().margins);
-                desired_geometry = wf::clamp(desired_geometry, get_output()->workarea->get_workarea());
-            }
-
-            toplevel->pending().geometry = desired_geometry;
         }
 
+        wf::geometry_t desired_geometry = {
+            xw->x,
+            xw->y,
+            xw->surface->current.width,
+            xw->surface->current.height
+        };
+
+        if (get_output())
+        {
+            desired_geometry = desired_geometry + -wf::origin(get_output()->get_layout_geometry());
+        }
+
+        wf::adjust_view_pending_geometry_on_start_map(this, desired_geometry, map_fs, map_maximized);
         wf::get_core().tx_manager->schedule_object(toplevel);
     }
 
     void handle_unmap_request() override
     {
+        LOGC(VIEWS, "Start unmapping ", self());
         emit_view_pre_unmap();
         // Store a reference to this until the view is actually unmapped with a transaction.
         _self_ref = shared_from_this();
@@ -383,12 +374,9 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
 
     void map(wlr_surface *surface)
     {
-        if (!parent)
-        {
-            wf::scene::readd_front(get_output()->wset()->get_node(), get_root_node());
-            get_output()->wset()->add_view({this});
-        }
+        LOGC(VIEWS, "Do map ", self());
 
+        wf::adjust_view_output_on_map(this);
         do_map(surface, false);
         on_surface_commit.connect(&surface->events.commit);
 
@@ -404,6 +392,7 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
 
     void unmap()
     {
+        LOGC(VIEWS, "Do unmap ", self());
         do_unmap();
         on_surface_commit.disconnect();
     }
@@ -450,12 +439,12 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
     void handle_toplevel_state_changed(wf::toplevel_state_t old_state)
     {
         surface_root_node->set_offset(wf::origin(toplevel->calculate_base_geometry()));
-        if (xw && !old_state.mapped && toplevel->current().mapped)
+        if (xw && xw->surface && !old_state.mapped && toplevel->current().mapped)
         {
             map(xw->surface);
         }
 
-        if (old_state.mapped && !toplevel->current().mapped)
+        if (is_mapped() && !toplevel->current().mapped)
         {
             unmap();
         }
@@ -480,7 +469,7 @@ class wayfire_xwayland_view : public wf::toplevel_view_interface_t, public wayfi
     {
         bool was_decorated = should_be_decorated();
         this->has_client_decoration = use_csd;
-        if ((was_decorated != should_be_decorated()) && is_mapped())
+        if (was_decorated != should_be_decorated())
         {
             wf::view_decoration_state_updated_signal data;
             data.view = {this};

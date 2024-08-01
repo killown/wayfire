@@ -263,8 +263,8 @@ class iwobbly_state_t
 
         model->x     = base.x;
         model->y     = base.y;
-        model->width = base.width;
-        model->height = base.height;
+        model->width = std::max(1, base.width);
+        model->height = std::max(1, base.height);
     }
 
   protected:
@@ -454,8 +454,13 @@ class wobbly_state_floating_t : public iwobbly_state_t
         }
 
         /* Synchronize view position with the model */
-        auto new_bbox = view->get_transformed_node()->get_transformer("wobbly")
-            ->get_children_bounding_box();
+        auto tr = view->get_transformed_node()->get_transformer("wobbly");
+        if (!tr)
+        {
+            return true;
+        }
+
+        auto new_bbox = tr->get_children_bounding_box();
         auto wm = view->get_geometry();
 
         int target_x = model->x + wm.x - new_bbox.x;
@@ -470,9 +475,14 @@ class wobbly_state_floating_t : public iwobbly_state_t
 
     void handle_frame() override
     {
-        auto new_bbox = view->get_transformed_node()->get_transformer("wobbly")
-            ->get_children_bounding_box();
-        update_base_geometry(new_bbox);
+        auto tr = view->get_transformed_node()->get_transformer("wobbly");
+        if (tr)
+        {
+            // Transformer might not exist anymore if we've destroyed the model but we still hold on to any
+            // render instances.
+            auto new_bbox = tr->get_children_bounding_box();
+            update_base_geometry(new_bbox);
+        }
     }
 
     void handle_wm_geometry(const wf::geometry_t& old_wm) override
@@ -651,8 +661,8 @@ class wobbly_transformer_node_t : public wf::scene::transformer_base_node_t
 
         model->x     = g.x;
         model->y     = g.y;
-        model->width = g.width;
-        model->height = g.height;
+        model->width = std::max(1, g.width);
+        model->height = std::max(1, g.height);
 
         model->grabbed = 0;
         model->synced  = 1;

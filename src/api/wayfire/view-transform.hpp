@@ -221,6 +221,7 @@ class transformer_render_instance_t : public render_instance_t
             _push_damage(region);
         };
 
+        children.clear();
         for (auto& ch : self->get_children())
         {
             ch->gen_render_instances(children, push_damage_child, _shown_on);
@@ -393,7 +394,7 @@ class view_2d_transformer_t : public transformer_base_node_t
     void gen_render_instances(std::vector<render_instance_uptr>& instances,
         damage_callback push_damage, wf::output_t *shown_on) override;
 
-    wayfire_view view;
+    std::weak_ptr<wf::view_interface_t> view;
 };
 
 /**
@@ -402,7 +403,7 @@ class view_2d_transformer_t : public transformer_base_node_t
 class view_3d_transformer_t : public transformer_base_node_t
 {
   protected:
-    wayfire_view view;
+    std::weak_ptr<wf::view_interface_t> view;
 
   public:
     glm::mat4 view_proj{1.0}, translation{1.0}, rotation{1.0}, scaling{1.0};

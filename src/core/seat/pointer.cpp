@@ -166,7 +166,7 @@ void wf::pointer_t::update_cursor_focus(wf::scene::node_ptr new_focus)
     send_leave_to_focus(old_focus);
     currently_sent_buttons.clear();
 
-    if (new_focus)
+    if (cursor_focus)
     {
         send_enter_to_focus();
     } else
@@ -175,6 +175,10 @@ void wf::pointer_t::update_cursor_focus(wf::scene::node_ptr new_focus)
         // avoid the last cursor image getting stuck outside of its surface.
         wf::get_core().set_cursor("default");
     }
+
+    wf::pointer_focus_changed_signal ev;
+    ev.new_focus = cursor_focus;
+    wf::get_core().emit(&ev);
 }
 
 wf::scene::node_ptr wf::pointer_t::get_focus() const

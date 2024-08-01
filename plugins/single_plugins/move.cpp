@@ -167,7 +167,7 @@ class wayfire_move : public wf::per_output_plugin_instance_t,
         activate_binding = [=] (auto)
         {
             auto view = toplevel_cast(wf::get_core().get_cursor_focus_view());
-            if (view && (view->role != wf::VIEW_ROLE_DESKTOP_ENVIRONMENT))
+            if (view && (view->role != wf::VIEW_ROLE_DESKTOP_ENVIRONMENT) && !drag_helper->view)
             {
                 initiate(view, get_global_input_coords());
             }
@@ -224,7 +224,10 @@ class wayfire_move : public wf::per_output_plugin_instance_t,
     wf::signal::connection_t<wf::view_move_request_signal> move_request =
         [=] (wf::view_move_request_signal *ev)
     {
-        initiate(ev->view, last_input_press_position);
+        if (!drag_helper->view)
+        {
+            initiate(ev->view, last_input_press_position);
+        }
     };
 
     /**
@@ -298,11 +301,15 @@ class wayfire_move : public wf::per_output_plugin_instance_t,
         auto target_output = wf::get_core().output_layout->get_output_at(grab_position.x, grab_position.y);
         if (target_output && (view->get_output() != target_output))
         {
-            auto offset = wf::origin(view->get_output()->get_layout_geometry()) +
+            auto parent = wf::move_drag::get_toplevel(view);
+            auto offset = wf::origin(parent->get_output()->get_layout_geometry()) +
                 -wf::origin(target_output->get_layout_geometry());
 
-            move_view_to_output(view, target_output, false);
-            view->move(view->get_geometry().x + offset.x, view->get_geometry().y + offset.y);
+            move_view_to_output(parent, target_output, false);
+            for (auto& v : parent->enumerate_views(false))
+            {
+                v->move(v->get_geometry().x + offset.x, v->get_geometry().y + offset.y);
+            }
 
             // On the new output
             wf::get_core().default_wm->move_request(view);
@@ -483,7 +490,16 @@ class wayfire_move : public wf::per_output_plugin_instance_t,
             slot.preview = nullptr;
         }
 
-        slot.slot_id = new_slot_id;
+        wf::grid::grid_request_signal grid_signal;
+        wf::get_core().emit(&grid_signal);
+
+        if (grid_signal.carried_out || (new_slot_id == wf::grid::slot_t::SLOT_CENTER))
+        {
+            slot.slot_id = new_slot_id;
+        } else
+        {
+            slot.slot_id = new_slot_id = wf::grid::slot_t::SLOT_NONE;
+        }
 
         /* Show a preview overlay */
         if (new_slot_id)

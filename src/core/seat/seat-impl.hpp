@@ -55,7 +55,7 @@ struct seat_t::impl
     uint32_t get_modifiers();
     void break_mod_bindings();
 
-    void set_keyboard_focus(wf::scene::node_ptr keyboard_focus);
+    void set_keyboard_focus(wf::scene::node_ptr keyboard_focus, wf::keyboard_focus_reason reason);
     wf::scene::node_ptr keyboard_focus;
     // Keys sent to the current keyboard focus
     std::multiset<uint32_t> pressed_keys;
@@ -110,6 +110,9 @@ struct seat_t::impl
     std::weak_ptr<wf::view_interface_t> _last_active_view;
     wf::signal::connection_t<scene::root_node_update_signal> on_root_node_updated;
     void update_active_view(wf::scene::node_ptr new_focus);
+
+    // Last serial used for button press, release, touch down/up and or tablet tip events.
+    uint32_t last_press_release_serial = 0;
 };
 }
 

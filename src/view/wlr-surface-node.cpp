@@ -479,22 +479,44 @@ void wf::scene::wlr_surface_node_t::update_pending_outputs()
 {
     for (auto& [wo, delta] : pending_visibility_delta)
     {
-        if ((visibility[wo] == 0) && (delta > 0) && surface)
+        if (delta > 0)
         {
-            wlr_surface_send_enter(surface, wo->handle);
-            wlr_fractional_scale_v1_notify_scale(surface, wo->handle->scale);
+            visibility[wo] += delta;
+            if (surface)
+            {
+                wlr_surface_send_enter(surface, wo->handle);
+            }
+        } else if (delta < 0)
+        {
+            if (!visibility.count(wo))
+            {
+                // output was destroyed, ignore.
+                continue;
+            }
+
+            visibility[wo] += delta;
+            if ((visibility[wo] <= 0) && surface)
+            {
+                wlr_surface_send_leave(surface, wo->handle);
+            }
+
+            if (visibility[wo] <= 0)
+            {
+                visibility.erase(wo);
+            }
+        }
+    }
+
+    if (surface && (visibility.size() > 0))
+    {
+        float max_scale = 1;
+        for (auto x : visibility)
+        {
+            max_scale = std::max(max_scale, x.first->handle->scale);
         }
 
-        visibility[wo] += delta;
-        if ((visibility[wo] == 0) && (delta < 0) && surface)
-        {
-            wlr_surface_send_leave(surface, wo->handle);
-        }
-
-        if (visibility[wo] == 0)
-        {
-            visibility.erase(wo);
-        }
+        wlr_fractional_scale_v1_notify_scale(surface, max_scale);
+        wlr_surface_set_preferred_buffer_scale(surface, max_scale);
     }
 
     pending_visibility_delta.clear();

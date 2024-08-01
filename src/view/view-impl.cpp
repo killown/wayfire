@@ -3,11 +3,15 @@
 #include "wayfire/scene-input.hpp"
 #include "wayfire/scene-render.hpp"
 #include "wayfire/scene.hpp"
+#include "wayfire/seat.hpp"
 #include "wayfire/signal-definitions.hpp"
 #include "wayfire/unstable/wlr-surface-controller.hpp"
 #include "wayfire/unstable/wlr-surface-node.hpp"
 #include "wayfire/view.hpp"
 #include "wayfire/output-layout.hpp"
+#include "wayfire/window-manager.hpp"
+#include "wayfire/workarea.hpp"
+#include "wayfire/workspace-set.hpp"
 #include <memory>
 #include <wayfire/util/log.hpp>
 #include <wayfire/view-helpers.hpp>
@@ -20,7 +24,11 @@ void wf::view_implementation::emit_view_map_signal(wayfire_view view, bool has_p
     data.is_positioned = has_position;
 
     view->emit(&data);
-    view->get_output()->emit(&data);
+    if (view->get_output())
+    {
+        view->get_output()->emit(&data);
+    }
+
     wf::get_core().emit(&data);
 }
 
@@ -142,10 +150,10 @@ void wf::init_desktop_apis()
     init_xdg_shell();
     init_layer_shell();
 
-    wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
-    if (xwayland_enabled == 1)
+    wf::option_wrapper_t<std::string> xwayland_enabled("core/xwayland");
+    if ((xwayland_enabled.value() == "true") || (xwayland_enabled.value() == "lazy"))
     {
-        init_xwayland();
+        init_xwayland(xwayland_enabled.value() == "lazy");
     }
 }
 
@@ -213,9 +221,6 @@ void wf::view_interface_t::view_priv_impl::set_mapped_surface_contents(
         return;
     }
 
-    wsurface  = content->get_surface();
-    is_mapped = true;
-
     // Locate the proper place to add the surface contents.
     // This is not trivial because we may have added content node before (if we currently are remapping).
     // In those cases, we replace the content with the dummy node.
@@ -230,9 +235,6 @@ void wf::view_interface_t::view_priv_impl::set_mapped_surface_contents(
 
 void wf::view_interface_t::view_priv_impl::unset_mapped_surface_contents()
 {
-    wsurface  = nullptr;
-    is_mapped = false;
-
     replace_node_or_add_front(surface_root_node, current_content, dummy_node);
 
     if (auto wcont = dynamic_cast<scene::wlr_surface_node_t*>(current_content.get()))
@@ -246,9 +248,15 @@ void wf::view_interface_t::view_priv_impl::unset_mapped_surface_contents()
     current_content = nullptr;
 }
 
-void wf::view_interface_t::view_priv_impl::set_mapped(bool mapped)
+void wf::view_interface_t::view_priv_impl::set_mapped(wlr_surface *surface)
 {
-    if (mapped)
+    wsurface  = surface;
+    is_mapped = !!surface;
+}
+
+void wf::view_interface_t::view_priv_impl::set_enabled(bool enabled)
+{
+    if (enabled)
     {
         scene::set_node_enabled(root_node, true);
     } else
@@ -397,4 +405,65 @@ wf::pointf_t wf::place_popup_at(wlr_surface *parent, wlr_surface *popup, wf::poi
     }
 
     return popup_offset;
+}
+
+void wf::adjust_view_output_on_map(wf::toplevel_view_interface_t *self)
+{
+    wf::output_t *chosen_output = nullptr;
+    if (self->parent)
+    {
+        chosen_output = self->parent->get_output();
+    } else if (self->get_output())
+    {
+        chosen_output = self->get_output();
+    } else
+    {
+        chosen_output = wf::get_core().seat->get_active_output();
+    }
+
+    if (self->get_output() != chosen_output)
+    {
+        self->set_output(chosen_output);
+    }
+
+    if (!self->parent && chosen_output)
+    {
+        wf::scene::readd_front(chosen_output->wset()->get_node(), self->get_root_node());
+        chosen_output->wset()->add_view({self});
+    }
+}
+
+void wf::fini_desktop_apis()
+{
+    fini_xdg_shell();
+    fini_layer_shell();
+    // xwayland destroyed separately by core
+}
+
+void wf::adjust_view_pending_geometry_on_start_map(wf::toplevel_view_interface_t *self,
+    wf::geometry_t map_geometry_client, bool map_fs, bool map_maximized)
+{
+    if (map_fs)
+    {
+        self->toplevel()->pending().fullscreen = true;
+        wf::get_core().default_wm->fullscreen_request(self, self->get_output(), true);
+    } else if (map_maximized)
+    {
+        self->toplevel()->pending().tiled_edges = wf::TILED_EDGES_ALL;
+        if (self->get_output())
+        {
+            self->toplevel()->pending().geometry = self->get_output()->workarea->get_workarea();
+        }
+    } else
+    {
+        auto map_geometry = wf::expand_geometry_by_margins(map_geometry_client,
+            self->toplevel()->pending().margins);
+
+        if (self->get_output())
+        {
+            map_geometry = wf::clamp(map_geometry, self->get_output()->workarea->get_workarea());
+        }
+
+        self->toplevel()->pending().geometry = map_geometry;
+    }
 }

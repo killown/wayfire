@@ -19,6 +19,7 @@
 #include <wayfire/window-manager.hpp>
 #include <wayfire/view-helpers.hpp>
 #include <wayfire/unstable/wlr-view-events.hpp>
+#include "../core/seat/seat-impl.hpp"
 
 
 // --------------------------------------- xdg-toplevel-base impl --------------------------------------------
@@ -59,19 +60,23 @@ wf::xdg_toplevel_view_base_t::xdg_toplevel_view_base_t(wlr_xdg_toplevel *topleve
 
 void wf::xdg_toplevel_view_base_t::map()
 {
-    priv->set_mapped(true);
+    LOGC(VIEWS, "Do map ", self());
+    priv->set_mapped(main_surface->get_surface());
     priv->set_mapped_surface_contents(main_surface);
+    priv->set_enabled(true);
     damage();
     emit_view_map();
 }
 
 void wf::xdg_toplevel_view_base_t::unmap()
 {
+    LOGC(VIEWS, "Do unmap ", self());
     damage();
     priv->unset_mapped_surface_contents();
+    priv->set_mapped(nullptr);
 
     emit_view_unmap();
-    priv->set_mapped(false);
+    priv->set_enabled(false);
     wf::scene::update(get_surface_root_node(), wf::scene::update_flag::INPUT_STATE);
 }
 
@@ -198,14 +203,22 @@ wf::xdg_toplevel_view_t::xdg_toplevel_view_t(wlr_xdg_toplevel *tlvl) : xdg_tople
         set_toplevel_parent(toplevel_cast(parent));
     });
 
-    on_request_move.set_callback([&] (void*)
+    on_request_move.set_callback([&] (void *data)
     {
-        wf::get_core().default_wm->move_request({this});
+        auto ev = static_cast<wlr_xdg_toplevel_move_event*>(data);
+        if (ev->serial == wf::get_core().seat->priv->last_press_release_serial)
+        {
+            wf::get_core().default_wm->move_request({this});
+            return;
+        }
     });
     on_request_resize.set_callback([&] (auto data)
     {
         auto ev = static_cast<wlr_xdg_toplevel_resize_event*>(data);
-        wf::get_core().default_wm->resize_request({this}, ev->edges);
+        if (ev->serial == wf::get_core().seat->priv->last_press_release_serial)
+        {
+            wf::get_core().default_wm->resize_request({this}, ev->edges);
+        }
     });
     on_request_minimize.set_callback([&] (void*)
     {
@@ -294,11 +307,7 @@ void wf::xdg_toplevel_view_t::map()
         this->has_client_decoration = uses_csd[xdg_toplevel->base->surface];
     }
 
-    if (!parent)
-    {
-        wf::scene::readd_front(get_output()->wset()->get_node(), get_root_node());
-        get_output()->wset()->add_view({this});
-    }
+    adjust_view_output_on_map(this);
 
     xdg_toplevel_view_base_t::map();
     wf::get_core().default_wm->focus_request(self());
@@ -346,7 +355,7 @@ void wf::xdg_toplevel_view_t::set_decoration_mode(bool use_csd)
 {
     bool was_decorated = should_be_decorated();
     this->has_client_decoration = use_csd;
-    if ((was_decorated != should_be_decorated()) && is_mapped())
+    if (was_decorated != should_be_decorated())
     {
         wf::view_decoration_state_updated_signal data;
         data.view = {this};
@@ -450,10 +459,10 @@ struct wf_xdg_decoration_t
     }
 };
 
+static wf::wl_listener_wrapper on_org_kde_decoration_created;
 static void init_legacy_decoration()
 {
-    static wf::wl_listener_wrapper decoration_created;
-    wf::option_wrapper_t<std::string> deco_mode{"core/preferred_decoration_mode"};
+    static wf::option_wrapper_t<std::string> deco_mode{"core/preferred_decoration_mode"};
     uint32_t default_mode = WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT;
     if ((std::string)deco_mode == "server")
     {
@@ -462,24 +471,35 @@ static void init_legacy_decoration()
 
     wlr_server_decoration_manager_set_default_mode(wf::get_core().protocols.decorator_manager, default_mode);
 
-    decoration_created.set_callback([&] (void *data)
+    on_org_kde_decoration_created.set_callback([&] (void *data)
     {
         /* will be freed by the destroy request */
         new wf_server_decoration_t((wlr_server_decoration*)(data));
     });
-    decoration_created.connect(&wf::get_core().protocols.decorator_manager->events.new_decoration);
+    on_org_kde_decoration_created.connect(&wf::get_core().protocols.decorator_manager->events.new_decoration);
+    deco_mode.set_callback([&] ()
+    {
+        uint32_t default_mode = WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT;
+        if ((std::string)deco_mode == "server")
+        {
+            default_mode = WLR_SERVER_DECORATION_MANAGER_MODE_SERVER;
+        }
+
+        wlr_server_decoration_manager_set_default_mode(wf::get_core().protocols.decorator_manager,
+            default_mode);
+    });
 }
 
+static wf::wl_listener_wrapper on_xdg_decoration_created;
 static void init_xdg_decoration()
 {
-    static wf::wl_listener_wrapper xdg_decoration_created;
-    xdg_decoration_created.set_callback([&] (void *data)
+    on_xdg_decoration_created.set_callback([&] (void *data)
     {
         /* will be freed by the destroy request */
         new wf_xdg_decoration_t((wlr_xdg_toplevel_decoration_v1*)(data));
     });
 
-    xdg_decoration_created.connect(&wf::get_core().protocols.xdg_decorator->events.new_toplevel_decoration);
+    on_xdg_decoration_created.connect(&wf::get_core().protocols.xdg_decorator->events.new_toplevel_decoration);
 }
 
 void wf::init_xdg_decoration_handlers()
@@ -488,21 +508,31 @@ void wf::init_xdg_decoration_handlers()
     init_xdg_decoration();
 }
 
+void wf::fini_xdg_decoration_handlers()
+{
+    on_org_kde_decoration_created.disconnect();
+    on_xdg_decoration_created.disconnect();
+}
+
 void wf::xdg_toplevel_view_t::start_map_tx()
 {
+    LOGC(VIEWS, "Start mapping ", self());
     wlr_box box;
     wlr_xdg_surface_get_geometry(xdg_toplevel->base, &box);
+
     auto margins = wtoplevel->pending().margins;
+    box.x = wtoplevel->pending().geometry.x + margins.left;
+    box.y = wtoplevel->pending().geometry.y + margins.top;
 
     wtoplevel->pending().mapped = true;
-    wtoplevel->pending().geometry.width = box.width + margins.left + margins.right;
-    wtoplevel->pending().geometry.height = box.height + margins.top + margins.bottom;
     priv->set_mapped_surface_contents(main_surface);
+    adjust_view_pending_geometry_on_start_map(this, box, pending_fullscreen(), pending_tiled_edges());
     wf::get_core().tx_manager->schedule_object(wtoplevel);
 }
 
 void wf::xdg_toplevel_view_t::start_unmap_tx()
 {
+    LOGC(VIEWS, "Start unmapping ", self());
     emit_view_pre_unmap();
 
     // Take reference until the view has been unmapped

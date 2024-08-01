@@ -500,7 +500,8 @@ void wayfire_layer_shell_view::map()
     on_commit_unmapped.disconnect();
 
     priv->set_mapped_surface_contents(main_surface);
-    priv->set_mapped(true);
+    priv->set_mapped(main_surface->get_surface());
+    priv->set_enabled(true);
     on_surface_commit.connect(&lsurface->surface->events.commit);
 
     /* Read initial data */
@@ -524,10 +525,10 @@ void wayfire_layer_shell_view::unmap()
 
     emit_view_pre_unmap();
     priv->unset_mapped_surface_contents();
+    priv->set_mapped(nullptr);
     on_surface_commit.disconnect();
     emit_view_unmap();
-    priv->set_mapped(false);
-
+    priv->set_enabled(false);
     wf_layer_shell_manager::get_instance().handle_unmap(this);
 }
 
@@ -674,19 +675,24 @@ class layer_shell_view_controller_t
 };
 
 static wlr_layer_shell_v1 *layer_shell_handle;
+static wf::wl_listener_wrapper on_layer_shell_surface_created;
+
 void wf::init_layer_shell()
 {
-    static wf::wl_listener_wrapper on_created;
-
     layer_shell_handle = wlr_layer_shell_v1_create(wf::get_core().display, 4);
     if (layer_shell_handle)
     {
-        on_created.set_callback([] (void *data)
+        on_layer_shell_surface_created.set_callback([] (void *data)
         {
             auto lsurf = static_cast<wlr_layer_surface_v1*>(data);
             new layer_shell_view_controller_t{lsurf};
         });
 
-        on_created.connect(&layer_shell_handle->events.new_surface);
+        on_layer_shell_surface_created.connect(&layer_shell_handle->events.new_surface);
     }
+}
+
+void wf::fini_layer_shell()
+{
+    on_layer_shell_surface_created.disconnect();
 }
