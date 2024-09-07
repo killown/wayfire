@@ -7,6 +7,12 @@
 #include <wayfire/plugins/common/shared-core-data.hpp>
 #include "ipc-method-repository.hpp"
 
+#if __has_feature(address_sanitizer)
+#define USE_EPOLL 0
+#else
+#define USE_EPOLL 1
+#endif
+
 namespace wf
 {
 namespace ipc

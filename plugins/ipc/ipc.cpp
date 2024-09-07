@@ -1,6 +1,7 @@
 #include "ipc.hpp"
 #include "wayfire/plugins/common/shared-core-data.hpp"
 #include <climits>
+#include <sys/epoll.h>
 #include <wayfire/util/log.hpp>
 #include <wayfire/core.hpp>
 #include <wayfire/plugin.hpp>
@@ -278,26 +279,77 @@ wf::ipc::client_t::~client_t()
     close(this->fd);
 }
 
-static bool write_exact(int fd, char *buf, ssize_t n)
-{
-    while (n > 0)
-    {
+static bool wait_for_writable_epoll(int fd) {
+    if (!USE_EPOLL) {
+        // AddressSanitizer is active; skip epoll-based waiting
+        return false;
+    }
+
+    int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+    if (epoll_fd == -1) {
+        fprintf(stderr, "Failed to create epoll instance, errno: %d (%s)\n", errno, strerror(errno));
+        return false;
+    }
+
+    struct epoll_event ev;
+    ev.events = EPOLLOUT;
+    ev.data.fd = fd;
+
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        fprintf(stderr, "epoll_ctl failed, errno: %d (%s)\n", errno, strerror(errno));
+        close(epoll_fd);
+        return false;
+    }
+
+    int timeout = 5000; // Timeout in milliseconds
+    struct epoll_event events;
+    int n = epoll_wait(epoll_fd, &events, 1, timeout);
+
+    close(epoll_fd);
+
+    if (n == -1) {
+        fprintf(stderr, "epoll_wait failed, errno: %d (%s)\n", errno, strerror(errno));
+        return false;
+    }
+    if (n == 0) {
+        fprintf(stderr, "epoll_wait timed out.\n");
+        return false;
+    }
+    if (events.events & EPOLLOUT) {
+        return true;
+    }
+
+    fprintf(stderr, "epoll_wait: socket not writable, unknown event.\n");
+    return false;
+}
+
+static bool write_exact(int fd, const char *buf, ssize_t n) {
+    while (n > 0) {
         ssize_t w = write(fd, buf, n);
-        if (w <= 0)
-        {
+        if (w <= 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (!wait_for_writable_epoll(fd)) {
+                    LOGE("Socket is not writable after waiting.");
+                    return false;
+                }
+                continue;  // Retry writing after the buffer is ready again
+            }
+            LOGE("Failed to send data on fd %d: %s", fd, strerror(errno));
             return false;
         }
 
-        n   -= w;
+        n -= w;
         buf += w;
     }
 
     return true;
 }
 
-void wf::ipc::client_t::send_json(nlohmann::json json)
+void wf::ipc::client_t::send_json(const nlohmann::json json)
 {
-    std::string serialized = json.dump(-1, ' ', false, nlohmann::detail::error_handler_t::ignore);
+    std::string serialized = json.dump();
+    uint32_t len = serialized.length();
+
     if (serialized.length() > MAX_MESSAGE_LEN)
     {
         LOGE("Error sending json to client: message too long!");
@@ -305,10 +357,10 @@ void wf::ipc::client_t::send_json(nlohmann::json json)
         return;
     }
 
-    uint32_t len = serialized.length();
-    if (write_exact(fd, (char*)&len, 4))
-    {
-        write_exact(fd, serialized.data(), len);
+    if (!write_exact(fd, reinterpret_cast<char*>(&len), sizeof(len)) ||
+        !write_exact(fd, serialized.data(), len)) {
+        LOGE("Error sending json to client.");
+        shutdown(fd, SHUT_RDWR);
     }
 }
 
