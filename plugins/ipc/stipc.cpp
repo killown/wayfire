@@ -291,6 +291,7 @@ class stipc_plugin_t : public wf::plugin_interface_t
         method_repository->register_method("stipc/feed_key", feed_key);
         method_repository->register_method("stipc/feed_button", feed_button);
         method_repository->register_method("stipc/move_cursor", move_cursor);
+        method_repository->register_method("stipc/get_cursor_position", get_cursor_position);
         method_repository->register_method("stipc/run", run);
         method_repository->register_method("stipc/ping", ping);
         method_repository->register_method("stipc/get_display", get_display);
@@ -506,6 +507,17 @@ class stipc_plugin_t : public wf::plugin_interface_t
         double y = data["y"];
         input->do_motion(x, y);
         return wf::ipc::json_ok();
+    };
+
+    ipc::method_callback get_cursor_position = [=] (nlohmann::json data)
+    {
+        auto response = wf::ipc::json_ok();
+        auto cursor = wf::get_core().get_cursor_position();
+        response["pos"] = {
+            {"x", cursor.x},
+            {"y", cursor.y}
+        };
+        return response;
     };
 
     ipc::method_callback do_touch = [=] (nlohmann::json data)
