@@ -496,7 +496,8 @@ class stipc_plugin_t : public wf::plugin_interface_t
         return wf::ipc::json_ok();
     };
 
-    ipc::method_callback get_cursor_position = [=](wf::json_t data) -> wf::json_t {
+    ipc::method_callback get_cursor_position = [=] (wf::json_t data) -> wf::json_t
+    {
         wf::json_t response = wf::ipc::json_ok();
         auto cursor = wf::get_core().get_cursor_position();
         response["pos"]["x"] = cursor.x;
