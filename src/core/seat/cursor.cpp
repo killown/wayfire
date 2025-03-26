@@ -129,24 +129,28 @@ void wf::cursor_t::init_xcursor()
 
 void wf::cursor_t::set_cursor(std::string name)
 {
-    if (this->hide_ref_counter)
+    if (this->hide_ref_counter || this->touchscreen_mode_active)
     {
         return;
     }
 
-    if (this->touchscreen_mode_active)
+    if (!last_set_by_client && name == last_cursor_name)
     {
-        return;
+        return; // ← Skips GPU upload if same cursor and not forced by client
     }
 
-    if (name == "default")
+    if (name.empty() || name == "default")
     {
         name = "left_ptr";
     }
 
-    idle_set_cursor.run_once([name, this] ()
+    std::string cursor_name = name;
+    idle_set_cursor.run_once([cursor_name, this] ()
     {
-        wlr_cursor_set_xcursor(cursor, xcursor, name.c_str());
+        wlr_cursor_set_xcursor(this->cursor, this->xcursor, cursor_name.c_str());
+        this->last_cursor_name = cursor_name;
+        this->last_set_by_client = false;
+        LOGD("Cursor updated to: ", cursor_name);
     });
 }
 
@@ -157,6 +161,7 @@ void wf::cursor_t::unhide_cursor()
         return;
     }
 
+    cursor_visible = true;
     set_cursor("default");
 }
 
@@ -165,6 +170,8 @@ void wf::cursor_t::hide_cursor()
     idle_set_cursor.disconnect();
     wlr_cursor_set_surface(cursor, NULL, 0, 0);
     this->hide_ref_counter++;
+    cursor_visible = false;
+    last_cursor_name.clear();
 }
 
 void wf::cursor_t::warp_cursor(wf::pointf_t point)
@@ -177,15 +184,11 @@ wf::pointf_t wf::cursor_t::get_cursor_position()
     return {cursor->x, cursor->y};
 }
 
+
 void wf::cursor_t::set_cursor(
     wlr_seat_pointer_request_set_cursor_event *ev, bool validate_request)
 {
-    if (this->hide_ref_counter)
-    {
-        return;
-    }
-
-    if (this->touchscreen_mode_active)
+    if (this->hide_ref_counter || this->touchscreen_mode_active)
     {
         return;
     }
@@ -199,7 +202,10 @@ void wf::cursor_t::set_cursor(
         }
     }
 
+    idle_set_cursor.disconnect();
     wlr_cursor_set_surface(cursor, ev->surface, ev->hotspot_x, ev->hotspot_y);
+    last_set_by_client = true;
+    last_cursor_name.clear(); // Force update next time
 }
 
 void wf::cursor_t::set_touchscreen_mode(bool enabled)
