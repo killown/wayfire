@@ -350,7 +350,8 @@ struct wf_layer_shell_manager
 
     void arrange_unmapped_view(wayfire_layer_shell_view *view)
     {
-        if (!view->get_output()) {
+        if (!view->get_output())
+        {
             return;
         }
 
@@ -604,9 +605,11 @@ void wayfire_layer_shell_view::close()
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
 {
-    if (!lsurface || !lsurface->resource) {
+    if (!lsurface || !lsurface->resource)
+    {
         return;
     }
+
     auto state = &lsurface->current;
     if ((state->anchor & both_horiz) == both_horiz)
     {
@@ -676,7 +679,8 @@ class layer_shell_view_controller_t
 
     ~layer_shell_view_controller_t()
     {
-        if (view) {
+        if (view)
+        {
             view->handle_destroy();
         }
     }
