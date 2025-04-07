@@ -604,7 +604,7 @@ void wayfire_layer_shell_view::close()
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
 {
-    if (!lsurface) {
+    if (!lsurface || !lsurface->resource) {
         return;
     }
     auto state = &lsurface->current;
