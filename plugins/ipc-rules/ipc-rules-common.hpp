@@ -195,21 +195,9 @@ static inline wf::json_t view_to_json(wayfire_view view)
     description["minimized"]   = toplevel ? toplevel->minimized : false;
     description["activated"]   = toplevel ? toplevel->activated : false;
     description["sticky"]     = toplevel ? toplevel->sticky : false;
-    description["wset-index"] = [&] () -> int64_t
-    {
-        if (!toplevel || !toplevel->get_wset())
-        {
-            return -1;
-        }
-
-        auto index = toplevel->get_wset()->get_index();
-        if (index == static_cast<decltype(index)>(-1))
-        {
-            return -1;
-        }
-
-        return static_cast<int64_t>(index);
-    }();
+    description["wset-index"] = toplevel && toplevel->get_wset()
+    ? static_cast<int64_t>(toplevel->get_wset()->get_index())
+    : -1;
     description["min-size"] = wf::ipc::dimensions_to_json(
         toplevel ? toplevel->toplevel()->get_min_size() : wf::dimensions_t{0, 0});
     description["max-size"] = wf::ipc::dimensions_to_json(
