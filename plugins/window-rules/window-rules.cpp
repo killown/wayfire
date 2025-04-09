@@ -111,27 +111,6 @@ void wayfire_window_rules_t::apply(const std::string & signal, wayfire_view view
         return;
     }
 
-    // Check if the view is a transient dialog
-    if (toplevel && toplevel->parent)
-    {
-        bool is_constrained = true;
-        auto parent_geom    = toplevel->parent->get_pending_geometry();
-        auto dialog_geom    = toplevel->get_pending_geometry();
-
-        if ((dialog_geom.x < parent_geom.x) ||
-            (dialog_geom.y < parent_geom.y) ||
-            (dialog_geom.x + dialog_geom.width > parent_geom.x + parent_geom.width) ||
-            (dialog_geom.y + dialog_geom.height > parent_geom.y + parent_geom.height))
-        {
-            is_constrained = false;
-        }
-
-        if (is_constrained)
-        {
-            return;
-        }
-    }
-
     for (const auto & rule : _rules)
     {
         _access_interface.set_view(view);
