@@ -115,13 +115,13 @@ void wayfire_window_rules_t::apply(const std::string & signal, wayfire_view view
     if (toplevel && toplevel->parent)
     {
         bool is_constrained = true;
-        auto parent_geom = toplevel->parent->get_pending_geometry();
-        auto dialog_geom = toplevel->get_pending_geometry();
+        auto parent_geom    = toplevel->parent->get_pending_geometry();
+        auto dialog_geom    = toplevel->get_pending_geometry();
 
-        if (dialog_geom.x < parent_geom.x ||
-            dialog_geom.y < parent_geom.y ||
-            dialog_geom.x + dialog_geom.width > parent_geom.x + parent_geom.width ||
-            dialog_geom.y + dialog_geom.height > parent_geom.y + parent_geom.height)
+        if ((dialog_geom.x < parent_geom.x) ||
+            (dialog_geom.y < parent_geom.y) ||
+            (dialog_geom.x + dialog_geom.width > parent_geom.x + parent_geom.width) ||
+            (dialog_geom.y + dialog_geom.height > parent_geom.y + parent_geom.height))
         {
             is_constrained = false;
         }
