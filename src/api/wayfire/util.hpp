@@ -7,6 +7,11 @@
 
 namespace wf
 {
+/**
+ * Expands a file path by replacing '~' with the user's home directory.
+ */
+std::string get_expanded_path(const std::string& path);
+
 /** Convert timespect to milliseconds. */
 int64_t timespec_to_msec(const timespec& ts);
 

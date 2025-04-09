@@ -4,7 +4,7 @@
 
 #include <wayfire/output.hpp>
 #include <wayfire/workspace-set.hpp>
-
+#include <wayfire/utils.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include "shaders.tpp"
@@ -55,7 +55,8 @@ void wf_cube_background_skydome::reload_texture()
 
     GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
 
-    if (image_io::load_from_file(last_background_image, GL_TEXTURE_2D))
+    auto full_path_background_image = wf::get_expanded_path(last_background_image);
+    if (image_io::load_from_file(full_path_background_image, GL_TEXTURE_2D))
     {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
@@ -63,8 +64,8 @@ void wf_cube_background_skydome::reload_texture()
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     } else
     {
-        LOGE("Failed to load skydome image from \"%s\".",
-            last_background_image.c_str());
+        LOGE("Failed to load skydome image from ",
+            full_path_background_image.c_str());
         GL_CALL(glDeleteTextures(1, &tex));
         tex = -1;
     }
