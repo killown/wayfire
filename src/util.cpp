@@ -34,12 +34,18 @@ static int handle_timeout(void *data)
 
 namespace wf
 {
-std::string get_expanded_path(const std::string& path) {
-    if (path.empty() || path[0] != '~') return path;
-    
-    if (const char* home = std::getenv("HOME")) {
+std::string get_expanded_path(const std::string& path)
+{
+    if (path.empty() || (path[0] != '~'))
+    {
+        return path;
+    }
+
+    if (const char *home = std::getenv("HOME"))
+    {
         return home + path.substr(1);
     }
+
     return path;
 }
 
