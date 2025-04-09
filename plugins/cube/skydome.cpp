@@ -4,7 +4,6 @@
 
 #include <wayfire/output.hpp>
 #include <wayfire/workspace-set.hpp>
-#include <wayfire/utils.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include "shaders.tpp"
