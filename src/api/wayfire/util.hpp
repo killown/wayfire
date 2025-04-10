@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <wayland-server.h>
 #include <functional>
+#include <wordexp.h>
+#include <iostream>
 
 namespace wf
 {
 /**
- * Expands a file path by replacing '~' with the user's home directory.
+ * Expands a file path using wordexp().
+ * Supports ~ (tilde), $VAR (environment variables), and other shell-like expansions.
  */
 std::string get_expanded_path(const std::string& path);
 

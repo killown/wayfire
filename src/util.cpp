@@ -34,19 +34,46 @@ static int handle_timeout(void *data)
 
 namespace wf
 {
-std::string get_expanded_path(const std::string& path)
-{
-    if (path.empty() || (path[0] != '~'))
+std::string get_expanded_path(const std::string& path) {
+    if (path.empty()) 
     {
         return path;
     }
 
-    if (const char *home = std::getenv("HOME"))
-    {
-        return home + path.substr(1);
-    }
+    wordexp_t result;
+    int ret = wordexp(path.c_str(), &result, WRDE_NOCMD);
 
-    return path;
+    if (ret == 0 && result.we_wordc > 0) 
+    {
+        std::string expanded_path = result.we_wordv[0];
+        wordfree(&result);
+        return expanded_path;
+    } else 
+    
+    {
+        wordfree(&result);
+        switch (ret) {
+            case WRDE_BADCHAR:
+                LOGE("get_expanded_path: Invalid character in input path: ", path);
+                break;
+            case WRDE_BADVAL:
+                LOGE("get_expanded_path: Undefined variable in input path: ", path);
+                break;
+            case WRDE_CMDSUB:
+                LOGE("get_expanded_path: Command substitution is disabled for safety: ", path);
+                break;
+            case WRDE_SYNTAX:
+                LOGE("get_expanded_path: Syntax error in input path: ", path);
+                break;
+            case WRDE_NOSPACE:
+                LOGE("get_expanded_path: Out of memory while expanding path: ", path);
+                break;
+            default:
+                LOGE("get_expanded_path: Unknown error while expanding path: ", path);
+                break;
+        }
+        return path;
+    }
 }
 
 wl_idle_call::wl_idle_call() = default;
