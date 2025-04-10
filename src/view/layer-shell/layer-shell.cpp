@@ -496,7 +496,6 @@ void wayfire_layer_shell_view::map()
     {
         this->app_id = nonull(lsurface->namespace_t);
         wf::view_implementation::emit_app_id_changed_signal(self());
-        wf_layer_shell_manager::get_instance().arrange_unmapped_view(this);
     }
 
     // Disconnect, from now on regular commits will work
@@ -605,7 +604,7 @@ void wayfire_layer_shell_view::close()
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
 {
-    if (!lsurface || !lsurface->resource)
+    if (!lsurface)
     {
         return;
     }
@@ -679,10 +678,7 @@ class layer_shell_view_controller_t
 
     ~layer_shell_view_controller_t()
     {
-        if (view)
-        {
-            view->handle_destroy();
-        }
+        view->handle_destroy();
     }
 };
 
