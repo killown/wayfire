@@ -5,7 +5,6 @@
 #include <wayland-server.h>
 #include <functional>
 #include <wordexp.h>
-#include <iostream>
 
 namespace wf
 {
