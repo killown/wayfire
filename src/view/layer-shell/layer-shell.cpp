@@ -603,6 +603,17 @@ void wayfire_layer_shell_view::close()
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
 {
     auto state = &lsurface->current;
+    /* 
+    * In multi-output setups, 
+    * the max screen size could result in a layer exceeding the dimensions of an individual output. 
+    * max_margin need to be lower than total size
+    */
+    int max_margin = get_output()->get_screen_size().width / 1.1;
+    state->margin.left = std::clamp(state->margin.left, -max_margin, max_margin);
+    state->margin.right = std::clamp(state->margin.right, -max_margin, max_margin);
+    state->margin.top = std::clamp(state->margin.top, -max_margin, max_margin);
+    state->margin.bottom = std::clamp(state->margin.bottom, -max_margin, max_margin);
+
     if ((state->anchor & both_horiz) == both_horiz)
     {
         box.x     += state->margin.left;
