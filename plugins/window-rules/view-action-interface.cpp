@@ -442,6 +442,11 @@ void view_action_interface_t::_start_on_output(std::string name)
         return;
     }
 
+    if (_view->parent)
+    {
+        return;
+    }
+
     if (_view->get_output() == output)
     {
         return;
