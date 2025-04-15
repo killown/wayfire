@@ -76,7 +76,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_view_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto id = wf::ipc::json_get_uint64(data, "view-id");
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -120,7 +120,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback focus_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto id = wf::ipc::json_get_uint64(data, "view-id");
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -139,7 +139,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback close_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto id = wf::ipc::json_get_uint64(data, "view-id");
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -163,7 +163,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_output_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto id = wf::ipc::json_get_uint64(data, "output-id");
         auto wo = wf::ipc::find_output_by_id(id);
         if (!wo)
         {
@@ -176,8 +176,8 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback configure_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
-        auto output_id = wf::ipc::json_get_optional_uint64(data, "output_id");
+        auto id = wf::ipc::json_get_uint64(data, "view-id");
+        auto output_id = wf::ipc::json_get_optional_uint64(data, "output-id");
 
         if (data.has_member("geometry") && !data["geometry"].is_object())
         {
@@ -240,7 +240,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_wset_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto id = wf::ipc::json_get_uint64(data, "wset-index");
         auto ws = wf::ipc::find_workspace_set_by_index(id);
         if (!ws)
         {

@@ -72,13 +72,13 @@ class ipc_activator_t
 
     ipc::method_callback ipc_cb = [=] (const wf::json_t& data)
     {
-        auto output_id = ipc::json_get_optional_int64(data, "output_id");
+        auto output_id = ipc::json_get_optional_int64(data, "output-id");
         if (!output_id.has_value())
         {
             output_id = ipc::json_get_optional_int64(data, "output-id");
         }
 
-        auto view_id = ipc::json_get_optional_int64(data, "view_id");
+        auto view_id = ipc::json_get_optional_int64(data, "view-id");
         if (!view_id.has_value())
         {
             view_id = ipc::json_get_optional_int64(data, "view-id");
@@ -97,7 +97,7 @@ class ipc_activator_t
         wayfire_view view;
         if (view_id.has_value())
         {
-            view = ipc::find_view_by_id(view_id.has_value());
+            view = ipc::find_view_by_id(view_id.value());
             if (!view)
             {
                 return ipc::json_error("view id not found!");
