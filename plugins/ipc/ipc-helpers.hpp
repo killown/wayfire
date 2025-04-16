@@ -55,7 +55,7 @@ WFJSON_GETTER_FUNCTION(bool, bool);
 #undef WFJSON_GETTER_FUNCTION
 
 
-inline wayfire_view find_view_by_id(uint32_t id)
+inline wayfire_view find_view_by_id(const std::optional<uint64_t>& id)
 {
     for (auto view : wf::get_core().get_all_views())
     {
@@ -68,7 +68,7 @@ inline wayfire_view find_view_by_id(uint32_t id)
     return nullptr;
 }
 
-inline wf::output_t *find_output_by_id(int32_t id)
+inline wf::output_t *find_output_by_id(const std::optional<uint64_t>& id)
 {
     for (auto wo : wf::get_core().output_layout->get_outputs())
     {
@@ -81,7 +81,7 @@ inline wf::output_t *find_output_by_id(int32_t id)
     return nullptr;
 }
 
-inline wf::workspace_set_t *find_workspace_set_by_index(int32_t index)
+inline wf::workspace_set_t *find_workspace_set_by_index(const std::optional<uint64_t>& index)
 {
     for (auto wset : wf::workspace_set_t::get_all())
     {

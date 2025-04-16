@@ -76,7 +76,12 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_view_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "view-id");
+        auto id = wf::ipc::json_get_optional_uint64(data, "view-id");
+        if (!id.has_value())
+        {
+            // Deprecated API usage: 'id' field for view is deprecated.
+            id = wf::ipc::json_get_optional_uint64(data, "id");
+        }
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -120,7 +125,12 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback focus_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "view-id");
+        auto id = wf::ipc::json_get_optional_uint64(data, "view-id");
+        if (!id.has_value())
+        {
+            // Deprecated API usage: 'id' field for view is deprecated.
+            id = wf::ipc::json_get_optional_uint64(data, "id");
+        }
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -139,7 +149,12 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback close_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "view-id");
+        auto id  = wf::ipc::json_get_optional_uint64(data, "view-id");
+        if (!id.has_value())
+        {
+            // Deprecated API usage: 'id' field for view is deprecated.
+            id = wf::ipc::json_get_optional_uint64(data, "id");
+        }
         if (auto view = wf::ipc::find_view_by_id(id))
         {
             auto response = wf::ipc::json_ok();
@@ -176,8 +191,18 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback configure_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "view-id");
+        auto id = wf::ipc::json_get_optional_uint64(data, "view-id");
         auto output_id = wf::ipc::json_get_optional_uint64(data, "output-id");
+        if (!id.has_value())
+        {
+            // Deprecated API usage: 'id' field for view is deprecated.
+            id = wf::ipc::json_get_optional_uint64(data, "id");
+        }
+        if (!id.has_value())
+        {
+            // Deprecated API usage: 'id' field for output is deprecated.
+            output_id = wf::ipc::json_get_optional_uint64(data, "id");
+        }
 
         if (data.has_member("geometry") && !data["geometry"].is_object())
         {
@@ -199,7 +224,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
         if (output_id.has_value())
         {
-            auto wo = wf::ipc::find_output_by_id(output_id.value());
+            auto wo = wf::ipc::find_output_by_id(output_id);
             if (!wo)
             {
                 return wf::ipc::json_error("output not found");
@@ -240,7 +265,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_wset_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "wset-index");
+        auto id = wf::ipc::json_get_optional_uint64(data, "wset-index");
         auto ws = wf::ipc::find_workspace_set_by_index(id);
         if (!ws)
         {

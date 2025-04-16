@@ -75,13 +75,14 @@ class ipc_activator_t
         auto output_id = ipc::json_get_optional_int64(data, "output-id");
         if (!output_id.has_value())
         {
-            output_id = ipc::json_get_optional_int64(data, "output-id");
+            // Deprecated API usage: 'id' field for output is deprecated.
+            output_id = ipc::json_get_optional_int64(data, "id");
         }
 
         auto view_id = ipc::json_get_optional_int64(data, "view-id");
         if (!view_id.has_value())
-        {
-            view_id = ipc::json_get_optional_int64(data, "view-id");
+        {   // Deprecated API usage: 'id' field for view is deprecated.
+            view_id = ipc::json_get_optional_int64(data, "id");
         }
 
         wf::output_t *wo = wf::get_core().seat->get_active_output();
