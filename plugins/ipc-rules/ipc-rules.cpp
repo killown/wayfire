@@ -198,7 +198,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
             // Deprecated API usage: 'id' field for view is deprecated.
             id = wf::ipc::json_get_optional_uint64(data, "id");
         }
-        if (!id.has_value())
+        if (!output_id.has_value())
         {
             // Deprecated API usage: 'id' field for output is deprecated.
             output_id = wf::ipc::json_get_optional_uint64(data, "id");
