@@ -55,7 +55,7 @@ WFJSON_GETTER_FUNCTION(bool, bool);
 #undef WFJSON_GETTER_FUNCTION
 
 
-inline wayfire_view find_view_by_id(const std::optional<uint64_t>& id)
+inline wayfire_view find_view_by_id(uint32_t id)
 {
     for (auto view : wf::get_core().get_all_views())
     {
@@ -68,7 +68,8 @@ inline wayfire_view find_view_by_id(const std::optional<uint64_t>& id)
     return nullptr;
 }
 
-inline wf::output_t *find_output_by_id(const std::optional<uint64_t>& id)
+
+inline wf::output_t *find_output_by_id(int32_t id)
 {
     for (auto wo : wf::get_core().output_layout->get_outputs())
     {
@@ -81,7 +82,7 @@ inline wf::output_t *find_output_by_id(const std::optional<uint64_t>& id)
     return nullptr;
 }
 
-inline wf::workspace_set_t *find_workspace_set_by_index(const std::optional<uint64_t>& index)
+inline wf::workspace_set_t *find_workspace_set_by_index(int32_t index)
 {
     for (auto wset : wf::workspace_set_t::get_all())
     {
@@ -94,32 +95,35 @@ inline wf::workspace_set_t *find_workspace_set_by_index(const std::optional<uint
     return nullptr;
 }
 
-inline std::optional<uint64_t> get_view_id(const wf::json_t& data) 
+inline std::optional<uint64_t> get_view_id(const wf::json_t& data)
 {
     auto view_id = wf::ipc::json_get_optional_uint64(data, "id");
-    if (!view_id.has_value()) 
+    if (!view_id.has_value())
     {
         view_id = wf::ipc::json_get_optional_uint64(data, "view_id");
     }
-    if (!view_id.has_value()) 
+
+    if (!view_id.has_value())
     {
-        view_id = wf::ipc::json_get_optional_uint64(data, "view-id");
+        return wf::ipc::json_get_uint64(data, "view-id");
     }
-    
+
     return view_id;
 }
 
-inline std::optional<uint64_t> get_output_id(const wf::json_t& data) 
+inline std::optional<uint64_t> get_output_id(const wf::json_t& data)
 {
     auto output_id = wf::ipc::json_get_optional_uint64(data, "id");
-    if (!output_id.has_value()) 
+    if (!output_id.has_value())
     {
         output_id = wf::ipc::json_get_optional_uint64(data, "output_id");
     }
-    if (!output_id.has_value()) 
+
+    if (!output_id.has_value())
     {
-        output_id = wf::ipc::json_get_optional_uint64(data, "output-id");
+        return wf::ipc::json_get_uint64(data, "output-id"); 
     }
+
     return output_id;
 }
 

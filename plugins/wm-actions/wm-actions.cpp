@@ -427,7 +427,7 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t,
     {
         auto view_id = wf::ipc::get_view_id(params);
         bool state = wf::ipc::json_get_bool(params, "state");
-        wayfire_toplevel_view view = toplevel_cast(wf::ipc::find_view_by_id(view_id));
+        wayfire_toplevel_view view = toplevel_cast(wf::ipc::find_view_by_id(view_id.value()));
         if (!view)
         {
             return wf::ipc::json_error("toplevel view id not found!");
