@@ -94,6 +94,35 @@ inline wf::workspace_set_t *find_workspace_set_by_index(const std::optional<uint
     return nullptr;
 }
 
+inline std::optional<uint64_t> get_view_id(const wf::json_t& data) 
+{
+    auto view_id = wf::ipc::json_get_optional_uint64(data, "id");
+    if (!view_id.has_value()) 
+    {
+        view_id = wf::ipc::json_get_optional_uint64(data, "view_id");
+    }
+    if (!view_id.has_value()) 
+    {
+        view_id = wf::ipc::json_get_optional_uint64(data, "view-id");
+    }
+    
+    return view_id;
+}
+
+inline std::optional<uint64_t> get_output_id(const wf::json_t& data) 
+{
+    auto output_id = wf::ipc::json_get_optional_uint64(data, "id");
+    if (!output_id.has_value()) 
+    {
+        output_id = wf::ipc::json_get_optional_uint64(data, "output_id");
+    }
+    if (!output_id.has_value()) 
+    {
+        output_id = wf::ipc::json_get_optional_uint64(data, "output-id");
+    }
+    return output_id;
+}
+
 inline wf::json_t geometry_to_json(wf::geometry_t g)
 {
     wf::json_t j;

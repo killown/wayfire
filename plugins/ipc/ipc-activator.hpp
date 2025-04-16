@@ -72,19 +72,8 @@ class ipc_activator_t
 
     ipc::method_callback ipc_cb = [=] (const wf::json_t& data)
     {
-        auto output_id = ipc::json_get_optional_int64(data, "output-id");
-        if (!output_id.has_value())
-        {
-            // Deprecated API usage: 'id' field for output is deprecated.
-            output_id = ipc::json_get_optional_int64(data, "id");
-        }
-
-        auto view_id = ipc::json_get_optional_int64(data, "view-id");
-        if (!view_id.has_value())
-        {   // Deprecated API usage: 'id' field for view is deprecated.
-            view_id = ipc::json_get_optional_int64(data, "id");
-        }
-
+        auto output_id = ipc::get_output_id(data);
+        auto view_id = ipc::get_view_id(data);
         wf::output_t *wo = wf::get_core().seat->get_active_output();
         if (output_id.has_value())
         {
