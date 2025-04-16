@@ -68,7 +68,6 @@ inline wayfire_view find_view_by_id(uint32_t id)
     return nullptr;
 }
 
-
 inline wf::output_t *find_output_by_id(int32_t id)
 {
     for (auto wo : wf::get_core().output_layout->get_outputs())
@@ -121,7 +120,7 @@ inline std::optional<uint64_t> get_output_id(const wf::json_t& data)
 
     if (!output_id.has_value())
     {
-        return wf::ipc::json_get_uint64(data, "output-id"); 
+        return wf::ipc::json_get_uint64(data, "output-id");
     }
 
     return output_id;

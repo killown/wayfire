@@ -81,6 +81,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         {
             return wf::ipc::json_error("Missing required field: view-id");
         }
+
         if (auto view = wf::ipc::find_view_by_id(view_id.value()))
         {
             auto response = wf::ipc::json_ok();
@@ -129,6 +130,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         {
             return wf::ipc::json_error("Missing required field: view-id");
         }
+
         if (auto view = wf::ipc::find_view_by_id(view_id.value()))
         {
             auto response = wf::ipc::json_ok();
@@ -147,11 +149,12 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback close_view = [=] (wf::json_t data)
     {
-        auto view_id  = wf::ipc::get_view_id(data);
+        auto view_id = wf::ipc::get_view_id(data);
         if (!view_id.has_value())
         {
             return wf::ipc::json_error("Missing required field: view-id");
         }
+
         if (auto view = wf::ipc::find_view_by_id(view_id.value()))
         {
             auto response = wf::ipc::json_ok();
@@ -176,10 +179,11 @@ class ipc_rules_t : public wf::plugin_interface_t,
     wf::ipc::method_callback get_output_info = [=] (wf::json_t data)
     {
         auto output_id = wf::ipc::get_output_id(data);
-        if(!output_id.has_value())
+        if (!output_id.has_value())
         {
             return wf::ipc::json_error("Missing required field: output-id");
         }
+
         auto wo = wf::ipc::find_output_by_id(output_id.value());
         if (!wo)
         {
@@ -192,7 +196,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback configure_view = [=] (wf::json_t data)
     {
-        auto view_id = wf::ipc::get_view_id(data);
+        auto view_id   = wf::ipc::get_view_id(data);
         auto output_id = wf::ipc::get_output_id(data);
         if (data.has_member("geometry") && !data["geometry"].is_object())
         {

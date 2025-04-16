@@ -73,7 +73,7 @@ class ipc_activator_t
     ipc::method_callback ipc_cb = [=] (const wf::json_t& data)
     {
         auto output_id = ipc::get_output_id(data);
-        auto view_id = ipc::get_view_id(data);
+        auto view_id   = ipc::get_view_id(data);
 
         wf::output_t *wo = wf::get_core().seat->get_active_output();
         if (output_id.has_value())
