@@ -560,10 +560,10 @@ class wf_vswitch_global_plugin_t : public wf::per_output_plugin_t<vswitch>
 
     wf::ipc::method_callback request_workspace = [=] (const wf::json_t& data)
     {
-        uint64_t x = wf::ipc::json_get_uint64(data, "x");
-        uint64_t y = wf::ipc::json_get_uint64(data, "y");
+        uint64_t x     = wf::ipc::json_get_uint64(data, "x");
+        uint64_t y     = wf::ipc::json_get_uint64(data, "y");
         auto output_id = wf::ipc::get_output_id(data);
-        auto view_id = wf::ipc::get_view_id(data);
+        auto view_id   = wf::ipc::get_view_id(data);
 
         auto wo = wf::ipc::find_output_by_id(output_id.value());
         if (!wo)
