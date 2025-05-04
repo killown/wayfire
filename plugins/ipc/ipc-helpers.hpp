@@ -117,6 +117,7 @@ inline std::optional<int64_t> get_output_id(const wf::json_t& data)
     {
         output_id = wf::ipc::json_get_optional_int64(data, "output-id");
     }
+
     if (!output_id.has_value())
     {
         output_id = wf::ipc::json_get_optional_int64(data, "id");
