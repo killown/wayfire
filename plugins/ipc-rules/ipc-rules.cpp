@@ -196,18 +196,18 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback configure_view = [=] (wf::json_t data)
     {
-        auto view_id   = wf::ipc::get_view_id(data);
+        auto view_id = wf::ipc::get_view_id(data);
         if (!view_id.has_value())
         {
             return wf::ipc::json_error("Missing required field: view-id");
         }
-       
+
         if (data.has_member("geometry") && !data["geometry"].is_object())
         {
             return wf::ipc::json_error("invalid geometry");
         }
 
-        auto view   = wf::ipc::find_view_by_id(view_id.value());
+        auto view = wf::ipc::find_view_by_id(view_id.value());
         if (!view)
         {
             return wf::ipc::json_error("view not found");
@@ -217,7 +217,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         if (!output_id.has_value())
         {
             // Fallback: Use current output of the view
-   
+
             if (view && view->get_output())
             {
                 output_id = view->get_output()->get_id();
@@ -251,7 +251,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
             toplevel->set_geometry(*geometry);
         }
-        
+
         auto sticky = wf::ipc::json_get_optional_bool(data, "sticky");
         if (sticky.has_value())
         {
