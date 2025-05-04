@@ -179,11 +179,6 @@ class ipc_rules_t : public wf::plugin_interface_t,
     wf::ipc::method_callback get_output_info = [=] (wf::json_t data)
     {
         auto output_id = wf::ipc::get_output_id(data);
-        if (!output_id.has_value())
-        {
-            return wf::ipc::json_error("Missing required field: output-id");
-        }
-
         auto wo = wf::ipc::find_output_by_id(output_id.value());
         if (!wo)
         {
