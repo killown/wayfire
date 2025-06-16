@@ -125,6 +125,7 @@ void wf::cursor_t::init_xcursor()
 
     xcursor = wlr_xcursor_manager_create(theme_ptr, size);
     set_cursor("default");
+    last_cursor_name.clear();
 }
 
 void wf::cursor_t::set_cursor(std::string name)
