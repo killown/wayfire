@@ -291,7 +291,8 @@ int main(int argc, char *argv[])
         config_backend = default_config_backend;
     }
 
-    if (!getenv("XDG_CURRENT_DESKTOP")) {
+    if (!getenv("XDG_CURRENT_DESKTOP")) 
+    {
         setenv("XDG_CURRENT_DESKTOP", "wayfire", 1);
     }
 
