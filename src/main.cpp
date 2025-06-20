@@ -291,6 +291,10 @@ int main(int argc, char *argv[])
         config_backend = default_config_backend;
     }
 
+    if (!getenv("XDG_CURRENT_DESKTOP")) {
+        setenv("XDG_CURRENT_DESKTOP", "wayfire", 1);
+    }
+
     int c, i;
     while ((c = getopt_long(argc, argv, "c:B:d::DhRlrv", opts, &i)) != -1)
     {
