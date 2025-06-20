@@ -247,6 +247,9 @@ endif
 install_data('wayfire.desktop', install_dir :
     join_paths(get_option('prefix'), 'share/wayland-sessions'))
 
+install_data('wayfire-portals.conf', install_dir :
+    join_paths(get_option('prefix'), 'share/xdg-desktop-portal/'))
+
 summary = [
 	'',
 	'----------------',
