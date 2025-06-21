@@ -61,7 +61,7 @@ class wayfire_resize : public wf::per_output_plugin_instance_t, public wf::point
     wf::geometry_t grabbed_geometry;
 
     uint32_t edges;
-        
+
     wf::option_wrapper_t<int> user_min_width{"resize/min_width"};
     wf::option_wrapper_t<int> user_min_height{"resize/min_height"};
     wf::option_wrapper_t<wf::buttonbinding_t> button{"resize/activate"};
@@ -304,19 +304,23 @@ class wayfire_resize : public wf::per_output_plugin_instance_t, public wf::point
 
     wf::dimensions_t calculate_min_size()
     {
-        // Get client size, clamp to 1x1, expand by margins
+        // Min size, if not set to something larger, is 1x1 + decoration size
         wf::dimensions_t min_size = view->toplevel()->get_min_size();
         min_size.width  = std::max(1, min_size.width);
         min_size.height = std::max(1, min_size.height);
         min_size = wf::expand_dimensions_by_margins(min_size,
             view->toplevel()->pending().margins);
-    
+
         if (user_min_width)
+        {
             min_size.width = user_min_width;
-    
+        }
+
         if (user_min_height)
+        {
             min_size.height = user_min_height;
-    
+        }
+
         return min_size;
     }
 
