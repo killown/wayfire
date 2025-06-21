@@ -10,6 +10,24 @@
 			<default>&lt;super&gt; BTN_RIGHT</default>
 		</option>
 
+        <option name="min_size" type="bool">
+            <_short>Enable minimum view size</_short>
+            <_long>If enabled, views cannot be resized smaller than a usable size.</_long>
+            <default>true</default>
+        </option>
+        
+        <option name="min_width" type="int">
+            <_short>Minimal view width</_short>
+            <_long>If min_size is true, this sets a fixed minimum width. If not set, calculated based on buttons and margins.</_long>
+            <default>0</default>
+        </option>
+        
+        <option name="min_height" type="int">
+            <_short>Minimal view height</_short>
+            <_long>If min_size is true, this sets a fixed minimum height. If not set, calculated based on titlebar height.</_long>
+            <default>0</default>
+        </option>
+        
 		<option name="activate_preserve_aspect" type="button">
 			<_short>Activate resize while preserving aspect</_short>
 			<_long>When the specified button is held down, you can drag a window to resize it while preserving its original aspect.</_long>
