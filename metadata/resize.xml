@@ -18,13 +18,13 @@
         
         <option name="min_width" type="int">
             <_short>Minimal view width</_short>
-            <_long>If min_size is true, this sets a fixed minimum width. If not set, calculated based on buttons and margins.</_long>
+            <_long>If min_size is true, this sets a fixed minimum width.</_long>
             <default>0</default>
         </option>
         
         <option name="min_height" type="int">
             <_short>Minimal view height</_short>
-            <_long>If min_size is true, this sets a fixed minimum height. If not set, calculated based on titlebar height.</_long>
+            <_long>If min_size is true, this sets a fixed minimum height.</_long>
             <default>0</default>
         </option>
         
