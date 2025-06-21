@@ -9,7 +9,7 @@
 			<_long>When the specified button is held down, you can drag a window to resize it.</_long>
 			<default>&lt;super&gt; BTN_RIGHT</default>
 		</option>
-        
+
         <option name="min_width" type="int">
             <_short>Minimal view width</_short>
             <_long>If min_size is true, this sets a fixed minimum width.</_long>
