@@ -9,12 +9,6 @@
 			<_long>When the specified button is held down, you can drag a window to resize it.</_long>
 			<default>&lt;super&gt; BTN_RIGHT</default>
 		</option>
-
-        <option name="min_size" type="bool">
-            <_short>Enable minimum view size</_short>
-            <_long>If enabled, views cannot be resized smaller than a usable size.</_long>
-            <default>true</default>
-        </option>
         
         <option name="min_width" type="int">
             <_short>Minimal view width</_short>

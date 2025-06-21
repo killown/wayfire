@@ -61,6 +61,9 @@ class wayfire_resize : public wf::per_output_plugin_instance_t, public wf::point
     wf::geometry_t grabbed_geometry;
 
     uint32_t edges;
+        
+    wf::option_wrapper_t<int> user_min_width{"resize/min_width"};
+    wf::option_wrapper_t<int> user_min_height{"resize/min_height"};
     wf::option_wrapper_t<wf::buttonbinding_t> button{"resize/activate"};
     wf::option_wrapper_t<wf::buttonbinding_t> button_preserve_aspect{
         "resize/activate_preserve_aspect"};
@@ -301,29 +304,19 @@ class wayfire_resize : public wf::per_output_plugin_instance_t, public wf::point
 
     wf::dimensions_t calculate_min_size()
     {
-        // Min size, if not set to something larger, is 1x1 + decoration size
+        // Get client size, clamp to 1x1, expand by margins
         wf::dimensions_t min_size = view->toplevel()->get_min_size();
         min_size.width  = std::max(1, min_size.width);
         min_size.height = std::max(1, min_size.height);
         min_size = wf::expand_dimensions_by_margins(min_size,
             view->toplevel()->pending().margins);
-
-        static wf::option_wrapper_t<bool> enable_min_size("resize/min_size");
-        static wf::option_wrapper_t<int> user_min_width("resize/min_width");
-        static wf::option_wrapper_t<int> user_min_height("resize/min_height");
-
-        if (enable_min_size)
-        {
-            int fallback_width  = 0;
-            int fallback_height = 0;
-
-            int effective_min_width  = user_min_width ? user_min_width : fallback_width;
-            int effective_min_height = user_min_height ? user_min_height : fallback_height;
-
-            min_size.width  = std::max(min_size.width, effective_min_width);
-            min_size.height = std::max(min_size.height, effective_min_height);
-        }
-
+    
+        if (user_min_width)
+            min_size.width = user_min_width;
+    
+        if (user_min_height)
+            min_size.height = user_min_height;
+    
         return min_size;
     }
 
