@@ -117,8 +117,15 @@ void wf::compositor_core_impl_t::init()
     }
 
     protocols.data_device = wlr_data_device_manager_create(display);
-    protocols.primary_selection_v1 =
-        wlr_primary_selection_v1_device_manager_create(display);
+    wf::option_wrapper_t<bool> disable_primary_selection{"workarounds/disable_primary_selection"};
+    if (disable_primary_selection)
+    {
+        protocols.primary_selection_v1 = nullptr;
+    } else
+    {
+        protocols.primary_selection_v1 =
+            wlr_primary_selection_v1_device_manager_create(display);
+    }
     protocols.data_control = wlr_data_control_manager_v1_create(display);
 
     output_layout = std::make_unique<wf::output_layout_t>(backend);

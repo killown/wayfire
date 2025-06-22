@@ -78,5 +78,10 @@
 			<_long>Maximum size in pixels of graphics buffers used for rendering. Needs to be set lower on some systems to avoid crashes and other issues.</_long>
 			<default>16384</default>
 		</option>
+		<option name="disable_primary_selection" type="bool">
+			<_short>Disable primary selection</_short>
+			<_long>Disable primary selection (middle-click copy/paste).</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>
