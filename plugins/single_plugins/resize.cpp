@@ -311,8 +311,8 @@ class wayfire_resize : public wf::per_output_plugin_instance_t, public wf::point
         min_size = wf::expand_dimensions_by_margins(min_size,
             view->toplevel()->pending().margins);
 
-        min_size.width  = std::max(min_size.width,  user_min_width  > 0 ? static_cast<int>(user_min_width)  : 0);
-        min_size.height = std::max(min_size.height, user_min_height > 0 ? static_cast<int>(user_min_height) : 0);
+        min_size.width  = std::max(min_size.width, static_cast<int>(user_min_width));
+        min_size.height = std::max(min_size.height, static_cast<int>(user_min_height));
 
         return min_size;
     }
