@@ -272,40 +272,40 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         });
     };
 
-    wf::key_callback on_toggle_tile_all = [=] (auto) 
+    wf::key_callback on_toggle_tile_all = [=] (auto)
     {
-        auto output = this->output; 
-        auto wset = output->wset(); 
+        auto output = this->output;
+        auto wset   = output->wset();
         bool any_tiled = false;
-    
-        for (auto& view : wset->get_views()) 
+
+        for (auto& view : wset->get_views())
         {
-            if (tile::view_node_t::get_node(view)) 
+            if (tile::view_node_t::get_node(view))
             {
                 any_tiled = true;
                 break;
             }
         }
-    
-        for (auto& view : wset->get_views()) 
+
+        for (auto& view : wset->get_views())
         {
-            if (!view->is_mapped() || !can_tile_view(view)) 
+            if (!view->is_mapped() || !can_tile_view(view))
             {
                 continue;
             }
-    
+
             auto node = tile::view_node_t::get_node(view);
-            if (any_tiled && node) 
+            if (any_tiled && node)
             {
                 detach_view(view);
                 wf::get_core().default_wm->tile_request(view, 0);
-                wf::get_core().default_wm->tile_request(view, wf::TILED_EDGES_ALL); 
-            } else if (!any_tiled && !node) 
+                wf::get_core().default_wm->tile_request(view, wf::TILED_EDGES_ALL);
+            } else if (!any_tiled && !node)
             {
                 attach_view(view);
             }
         }
-    
+
         return true;
     };
 
