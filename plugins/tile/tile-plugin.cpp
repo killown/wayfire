@@ -274,9 +274,11 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
 
     wf::key_callback on_toggle_tile_current_ws = [=] (auto)
     {
+        auto last_focused_view = wf::get_core().seat->get_active_view();
         auto output = this->output;
         auto wset   = output->wset();
         auto views  = wset->get_views(wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE);
+        
         bool any_tiled = false;
 
         for (auto& view : views)
@@ -307,6 +309,8 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
             }
         }
 
+        wf::get_core().default_wm->focus_raise_view(last_focused_view);
+        
         return true;
     };
 
