@@ -33,7 +33,7 @@
 		<option name="key_toggle_all" type="key">
 			<_short>Toggle tiling for all views</_short>
 			<_long>
-			Toggles tiling mode for all currently tileable views.
+			Toggles tiling mode for all currently tileable views from the current workspace.
 			When enabled, eligible views are added to the tiling layout.
 			When disabled, tiled views are removed from the layout and maximized.
 			</_long>

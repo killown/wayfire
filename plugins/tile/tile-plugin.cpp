@@ -276,36 +276,38 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
     {
         auto output = this->output;
         auto wset   = output->wset();
+        auto views = wset->get_views(wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE);
         bool any_tiled = false;
-
-        for (auto& view : wset->get_views())
-        {
+    
+        for (auto& view : views)
+        {  
             if (tile::view_node_t::get_node(view))
             {
                 any_tiled = true;
                 break;
             }
         }
-
-        for (auto& view : wset->get_views())
-        {
-            if (!view->is_mapped() || !can_tile_view(view))
+     
+        for (auto& view : views)
+        {   
+            if (!can_tile_view(view))
             {
                 continue;
             }
-
+    
             auto node = tile::view_node_t::get_node(view);
             if (any_tiled && node)
             {
                 detach_view(view);
                 wf::get_core().default_wm->tile_request(view, 0);
                 wf::get_core().default_wm->tile_request(view, wf::TILED_EDGES_ALL);
-            } else if (!any_tiled && !node)
+            }
+            else if (!any_tiled && !node)
             {
                 attach_view(view);
             }
         }
-
+    
         return true;
     };
 
