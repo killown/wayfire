@@ -7,6 +7,7 @@
 
 #include <wayfire/output.hpp>
 #include <wayfire/workspace-set.hpp>
+#include <wayfire/workarea.hpp>
 #include <wayfire/view-transform.hpp>
 #include <wayfire/plugins/crossfade.hpp>
 #include <wayfire/plugins/common/util.hpp>
@@ -399,6 +400,14 @@ wf::geometry_t view_node_t::calculate_target_geometry()
             size.height,
         };
     }
+    else if (this->show_maximized)
+    {
+        local_geometry = wset->get_attached_output()->workarea->get_workarea();
+        local_geometry.x += gaps.left;
+        local_geometry.y += gaps.top;
+        local_geometry.width -= gaps.left + gaps.right;
+        local_geometry.height -= gaps.top + gaps.bottom;
+    }
 
     if (view->sticky)
     {
@@ -458,10 +467,18 @@ void view_node_t::set_geometry(wf::geometry_t geometry, wf::txn::transaction_upt
     }
 
     wf::get_core().default_wm->update_last_windowed_geometry(view);
-    view->toplevel()->pending().tiled_edges = TILED_EDGES_ALL;
-    tx->add_object(view->toplevel());
 
     auto target = calculate_target_geometry();
+
+    bool is_fullscreen = view->pending_fullscreen();
+    bool is_maximized = this->show_maximized;
+
+    if (is_fullscreen || is_maximized)
+    {
+        view->toplevel()->pending().tiled_edges = TILED_EDGES_ALL;
+        tx->add_object(view->toplevel());
+    }
+
     if (this->needs_crossfade() && (target != view->get_geometry()))
     {
         view->get_transformed_node()->rem_transformer(scale_transformer_name);

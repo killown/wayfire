@@ -159,6 +159,7 @@ struct view_node_t : public tree_node_t
     ~view_node_t();
 
     wayfire_toplevel_view view;
+    
     /**
      * Set the geometry of the node and the contained view.
      *
@@ -167,6 +168,11 @@ struct view_node_t : public tree_node_t
      * the geometry of the whole output.
      */
     void set_geometry(wf::geometry_t geometry, wf::txn::transaction_uptr& tx) override;
+
+    /**
+     * When true, the view will occupy the entire workarea (minus gaps),
+     */
+    bool show_maximized = false;
 
     /**
      * Set the gaps for non-fullscreen mode.
