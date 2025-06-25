@@ -55,6 +55,7 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
     wf::option_wrapper_t<wf::buttonbinding_t> button_resize{"simple-tile/button_resize"};
 
     wf::option_wrapper_t<wf::keybinding_t> key_toggle_tile{"simple-tile/key_toggle"};
+    wf::option_wrapper_t<wf::keybinding_t> key_toggle_tile_all{"simple-tile/key_toggle_all"};
     wf::option_wrapper_t<wf::keybinding_t> key_focus_left{"simple-tile/key_focus_left"};
     wf::option_wrapper_t<wf::keybinding_t> key_focus_right{"simple-tile/key_focus_right"};
     wf::option_wrapper_t<wf::keybinding_t> key_focus_above{"simple-tile/key_focus_above"};
@@ -271,6 +272,43 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         });
     };
 
+    wf::key_callback on_toggle_tile_all = [=] (auto) 
+    {
+        auto output = this->output; 
+        auto wset = output->wset(); 
+        bool any_tiled = false;
+    
+        for (auto& view : wset->get_views()) 
+        {
+            if (tile::view_node_t::get_node(view)) 
+            {
+                any_tiled = true;
+                break;
+            }
+        }
+    
+        for (auto& view : wset->get_views()) 
+        {
+            if (!view->is_mapped() || !can_tile_view(view)) 
+            {
+                continue;
+            }
+    
+            auto node = tile::view_node_t::get_node(view);
+            if (any_tiled && node) 
+            {
+                detach_view(view);
+                wf::get_core().default_wm->tile_request(view, 0);
+                wf::get_core().default_wm->tile_request(view, wf::TILED_EDGES_ALL); 
+            } else if (!any_tiled && !node) 
+            {
+                attach_view(view);
+            }
+        }
+    
+        return true;
+    };
+
     bool focus_adjacent(tile::split_insertion_t direction)
     {
         return conditioned_view_execute(true, [=] (wayfire_toplevel_view view)
@@ -348,6 +386,7 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         output->add_button(button_move, &on_move_view);
         output->add_button(button_resize, &on_resize_view);
         output->add_key(key_toggle_tile, &on_toggle_tiled_state);
+        output->add_key(key_toggle_tile_all, &on_toggle_tile_all);
 
         output->add_key(key_focus_left, &on_focus_adjacent);
         output->add_key(key_focus_right, &on_focus_adjacent);
