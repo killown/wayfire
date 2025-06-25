@@ -30,15 +30,6 @@
 			<_long>Toggles tiling mode with the specified key.</_long>
 			<default>&lt;super&gt; KEY_T</default>
 		</option>
-		<option name="key_toggle_all" type="key">
-			<_short>Toggle tiling for all views</_short>
-			<_long>
-			Toggles tiling mode for all currently tileable views from the current workspace.
-			When enabled, eligible views are added to the tiling layout.
-			When disabled, tiled views are removed from the layout and maximized.
-			</_long>
-			<default>&lt;ctrl&gt;&lt;super&gt; KEY_T</default>
-		</option>
 		<option name="key_focus_left" type="key">
 			<_short>Key focus left</_short>
 			<_long>Moves focus to the window left with the specified key.</_long>
@@ -58,6 +49,15 @@
 			<_short>Key focus below</_short>
 			<_long>Moves focus to the window below with the specified key.</_long>
 			<default>&lt;super&gt; KEY_J</default>
+		</option>
+		<option name="key_toggle_current_ws" type="key">
+			<_short>Toggle tiling in current workspace</_short>
+			<_long>
+			Toggles tiling mode for all currently tileable views from the current workspace.
+			When enabled, eligible views are added to the tiling layout.
+			When disabled, tiled views are removed from the layout and maximized.
+			</_long>
+			<default>&lt;ctrl&gt;&lt;super&gt; KEY_T</default>
 		</option>
 		<option name="inner_gap_size" type="int">
 			<_short>Inner gap size</_short>
