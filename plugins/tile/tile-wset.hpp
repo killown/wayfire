@@ -300,7 +300,7 @@ class tile_workspace_set_data_t : public wf::custom_data_t
                 if (view->pending_fullscreen())
                 {
                     set_view_fullscreen(view, false);
-                }                
+                }
             });
         }
     }
@@ -326,9 +326,9 @@ class tile_workspace_set_data_t : public wf::custom_data_t
 
     void set_view_maximized(wayfire_toplevel_view view, bool should_maximize)
     {
-            auto node = tile::view_node_t::get_node(view);
-            node->show_maximized = should_maximize;
-            update_root_size();
+        auto node = tile::view_node_t::get_node(view);
+        node->show_maximized = should_maximize;
+        update_root_size();
     }
 };
 }

@@ -45,7 +45,8 @@ static bool can_tile_view(wayfire_toplevel_view view)
     return true;
 }
 
-wf::activator_callback on_toggle_maximized = [] (auto) {
+wf::activator_callback on_toggle_maximized = [] (auto)
+{
     return true;
 };
 
@@ -170,11 +171,11 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         if (auto toplevel = toplevel_cast(ev->view))
         {
             if (toplevel->get_wset())
-            {            
+            {
                 auto wset = toplevel->get_wset();
                 tile_workspace_set_data_t::get(wset).unmaximize_all_views_on_workspace(wset);
             }
-               
+
             if (tile_window_by_default(toplevel))
             {
                 attach_view(toplevel);
@@ -294,41 +295,42 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
             {
                 return;
             }
-    
+
             node->show_maximized = !node->show_maximized;
-    
+
             autocommit_transaction_t tx;
             node->set_geometry(node->geometry, tx.tx);
         });
     };
-    
+
     bool focus_adjacent(tile::split_insertion_t direction)
     {
         return conditioned_view_execute(true, [=] (wayfire_toplevel_view view)
         {
             auto adjacent = tile::find_first_view_in_direction(
                 tile::view_node_t::get_node(view), direction);
-    
+
             if (!adjacent)
+            {
                 return false;
-   
-            auto current_node = tile::view_node_t::get_node(view);
+            }
+
+            auto current_node  = tile::view_node_t::get_node(view);
             bool was_maximized = current_node->show_maximized;
-    
+
             if (was_maximized)
             {
                 autocommit_transaction_t tx;
                 current_node->show_maximized = false;
                 current_node->set_geometry(current_node->geometry, tx.tx);
             }
-    
+
             auto adjacent_node = tile::view_node_t::get_node(adjacent->view);
             if (adjacent_node && was_maximized)
             {
                 autocommit_transaction_t tx;
                 adjacent_node->show_maximized = true;
                 adjacent_node->set_geometry(adjacent_node->geometry, tx.tx);
-                
             }
 
             wf::get_core().seat->focus_view(adjacent->view);
@@ -340,11 +342,11 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
             {
                 wf::get_core().default_wm->fullscreen_request(adjacent->view, output, true);
             }
-    
+
             return true;
         });
     }
-    
+
     wf::key_callback on_focus_adjacent = [=] (wf::keybinding_t binding)
     {
         if (binding == key_focus_left)
@@ -405,7 +407,7 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         output->add_key(key_focus_right, &on_focus_adjacent);
         output->add_key(key_focus_above, &on_focus_adjacent);
         output->add_key(key_focus_below, &on_focus_adjacent);
-        
+
         output->add_activator(key_toggle_maximized, &on_toggle_maximized);
     }
 
@@ -434,7 +436,7 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         output->rem_binding(&on_resize_view);
         output->rem_binding(&on_toggle_tiled_state);
         output->rem_binding(&on_focus_adjacent);
-        output->rem_binding(&on_toggle_maximized); 
+        output->rem_binding(&on_toggle_maximized);
         stop_controller(true);
     }
 };
@@ -534,7 +536,7 @@ class tile_plugin_t : public wf::plugin_interface_t, wf::per_output_tracker_mixi
         if (auto toplevel = toplevel_cast(wf::node_to_view(ev->new_focus)))
         {
             if (toplevel->get_wset())
-            {            
+            {
                 auto wset = toplevel->get_wset();
                 tile_workspace_set_data_t::get(wset).consider_exit_fullscreen(toplevel);
             }
