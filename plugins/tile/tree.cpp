@@ -373,6 +373,25 @@ void view_node_t::set_gaps(const gap_size_t& size)
     }
 }
 
+wf::geometry_t adjust_geometry_for_workspace(
+    std::shared_ptr<wf::workspace_set_t> wset,
+    const wf::geometry_t& base_geometry,
+    const wf::geometry_t& local_geometry)
+{
+    auto vp = wset->get_current_workspace();
+    auto size = wset->get_last_output_geometry().value_or(wf::tile::default_output_resolution);
+    int view_vp_x = std::floor(1.0 * local_geometry.x / size.width);
+    int view_vp_y = std::floor(1.0 * local_geometry.y / size.height);
+    int dx = (view_vp_x - vp.x) * size.width;
+    int dy = (view_vp_y - vp.y) * size.height;
+
+    wf::geometry_t adjusted = base_geometry;
+    adjusted.x += dx;
+    adjusted.y += dy;
+
+    return adjusted;
+}
+
 wf::geometry_t view_node_t::calculate_target_geometry()
 {
     /* Calculate view geometry in coordinates local to the active workspace,
@@ -389,24 +408,13 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     /* If view is maximized, we want to use the full available geometry */
     if (view->pending_fullscreen())
     {
-        auto vp = wset->get_current_workspace();
-        int view_vp_x = std::floor(1.0 * geometry.x / size.width);
-        int view_vp_y = std::floor(1.0 * geometry.y / size.height);
-
-        local_geometry = {
-            (view_vp_x - vp.x) * size.width,
-            (view_vp_y - vp.y) * size.height,
-            size.width,
-            size.height,
-        };
+        auto base_geometry = wset->get_attached_output()->get_relative_geometry();
+        local_geometry = adjust_geometry_for_workspace(wset, base_geometry, local_geometry);
     }
     else if (this->show_maximized)
     {
-        local_geometry = wset->get_attached_output()->workarea->get_workarea();
-        local_geometry.x += gaps.left;
-        local_geometry.y += gaps.top;
-        local_geometry.width -= gaps.left + gaps.right;
-        local_geometry.height -= gaps.top + gaps.bottom;
+        auto base_workarea = wset->get_attached_output()->workarea->get_workarea();
+        local_geometry = adjust_geometry_for_workspace(wset, base_workarea, local_geometry);
     }
 
     if (view->sticky)
@@ -467,18 +475,10 @@ void view_node_t::set_geometry(wf::geometry_t geometry, wf::txn::transaction_upt
     }
 
     wf::get_core().default_wm->update_last_windowed_geometry(view);
+    view->toplevel()->pending().tiled_edges = TILED_EDGES_ALL;
+    tx->add_object(view->toplevel());
 
     auto target = calculate_target_geometry();
-
-    bool is_fullscreen = view->pending_fullscreen();
-    bool is_maximized = this->show_maximized;
-
-    if (is_fullscreen || is_maximized)
-    {
-        view->toplevel()->pending().tiled_edges = TILED_EDGES_ALL;
-        tx->add_object(view->toplevel());
-    }
-
     if (this->needs_crossfade() && (target != view->get_geometry()))
     {
         view->get_transformed_node()->rem_transformer(scale_transformer_name);
