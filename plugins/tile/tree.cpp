@@ -378,18 +378,20 @@ wf::geometry_t adjust_geometry_for_workspace(
     const wf::geometry_t& base_geometry,
     const wf::geometry_t& local_geometry)
 {
-    auto vp   = wset->get_current_workspace();
+    auto vp = wset->get_current_workspace();
     auto size = wset->get_last_output_geometry().value_or(wf::tile::default_output_resolution);
-    int view_vp_x = std::floor(1.0 * local_geometry.x / size.width);
-    int view_vp_y = std::floor(1.0 * local_geometry.y / size.height);
-    int dx = (view_vp_x - vp.x) * size.width;
-    int dy = (view_vp_y - vp.y) * size.height;
 
-    wf::geometry_t adjusted = base_geometry;
-    adjusted.x += dx;
-    adjusted.y += dy;
+    int source_x = std::floor(1.0 * (local_geometry.x + vp.x * size.width) / size.width);
+    int source_y = std::floor(1.0 * (local_geometry.y + vp.y * size.height) / size.height);
 
-    return adjusted;
+    int dx = (source_x - vp.x) * size.width;
+    int dy = (source_y - vp.y) * size.height;
+
+    wf::geometry_t result = base_geometry;
+    result.x += dx;
+    result.y += dy;
+
+    return result;
 }
 
 wf::geometry_t view_node_t::calculate_target_geometry()
@@ -413,7 +415,12 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     } else if (this->show_maximized)
     {
         auto base_workarea = wset->get_attached_output()->workarea->get_workarea();
-        local_geometry = adjust_geometry_for_workspace(wset, base_workarea, local_geometry);
+        auto source_geometry = view->get_geometry();
+        local_geometry = adjust_geometry_for_workspace(wset, base_workarea, source_geometry);
+        local_geometry.x     += gaps.left;
+        local_geometry.y     += gaps.top;
+        local_geometry.width -= gaps.left + gaps.right;
+        local_geometry.height -= gaps.top + gaps.bottom;
     }
 
     if (view->sticky)
