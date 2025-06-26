@@ -159,7 +159,7 @@ struct view_node_t : public tree_node_t
     ~view_node_t();
 
     wayfire_toplevel_view view;
-    
+
     /**
      * Set the geometry of the node and the contained view.
      *

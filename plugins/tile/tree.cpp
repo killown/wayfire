@@ -378,7 +378,7 @@ wf::geometry_t adjust_geometry_for_workspace(
     const wf::geometry_t& base_geometry,
     const wf::geometry_t& local_geometry)
 {
-    auto vp = wset->get_current_workspace();
+    auto vp   = wset->get_current_workspace();
     auto size = wset->get_last_output_geometry().value_or(wf::tile::default_output_resolution);
     int view_vp_x = std::floor(1.0 * local_geometry.x / size.width);
     int view_vp_y = std::floor(1.0 * local_geometry.y / size.height);
@@ -410,8 +410,7 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     {
         auto base_geometry = wset->get_attached_output()->get_relative_geometry();
         local_geometry = adjust_geometry_for_workspace(wset, base_geometry, local_geometry);
-    }
-    else if (this->show_maximized)
+    } else if (this->show_maximized)
     {
         auto base_workarea = wset->get_attached_output()->workarea->get_workarea();
         local_geometry = adjust_geometry_for_workspace(wset, base_workarea, local_geometry);

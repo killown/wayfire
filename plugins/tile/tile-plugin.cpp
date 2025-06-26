@@ -274,8 +274,8 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
 
     wf::key_callback on_toggle_maximized = [=] (auto)
     {
-        auto view = wf::get_core().seat->get_active_view();  
-        auto node = tile::view_node_t::get_node(view);   
+        auto view = wf::get_core().seat->get_active_view();
+        auto node = tile::view_node_t::get_node(view);
         node->show_maximized = !node->show_maximized;
         autocommit_transaction_t tx;
         node->set_geometry(node->geometry, tx.tx);
