@@ -158,10 +158,27 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         }
     }
 
+    void unmaximize_all_views_on_workspace(std::shared_ptr<wf::workspace_set_t> wset)
+    {
+        for (auto& view : wset->get_views())
+        {
+            auto node = tile::view_node_t::get_node(view);
+            if (node && node->show_maximized)
+            {
+                autocommit_transaction_t tx;
+                node->show_maximized = false;
+                node->set_geometry(node->geometry, tx.tx);
+            }
+        }
+    }
+
     wf::signal::connection_t<view_mapped_signal> on_view_mapped = [=] (view_mapped_signal *ev)
     {
         if (auto toplevel = toplevel_cast(ev->view))
         {
+            auto wset = toplevel->get_wset();
+            unmaximize_all_views_on_workspace(wset);
+    
             if (tile_window_by_default(toplevel))
             {
                 attach_view(toplevel);
