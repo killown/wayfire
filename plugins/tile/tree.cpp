@@ -410,17 +410,26 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     /* If view is maximized, we want to use the full available geometry */
     if (view->pending_fullscreen())
     {
-        auto base_geometry = wset->get_attached_output()->get_relative_geometry();
-        local_geometry = adjust_geometry_for_workspace(wset, base_geometry, local_geometry);
+        local_geometry = adjust_geometry_for_workspace(wset, size, local_geometry);
     } else if (this->show_maximized)
     {
-        auto base_workarea = wset->get_attached_output()->workarea->get_workarea();
+        auto attached_output = wset->get_attached_output();
+        if (!attached_output)
+        {
+            return local_geometry;
+        }
+
+        auto base_workarea = attached_output->workarea->get_workarea();
         auto source_geometry = view->get_geometry();
+
+        int oh = outer_horiz_gaps;
+        int ov = outer_vert_gaps;
+
         local_geometry = adjust_geometry_for_workspace(wset, base_workarea, source_geometry);
-        local_geometry.x     += gaps.left;
-        local_geometry.y     += gaps.top;
-        local_geometry.width -= gaps.left + gaps.right;
-        local_geometry.height -= gaps.top + gaps.bottom;
+        local_geometry.x += oh;
+        local_geometry.y += ov;
+        local_geometry.width -= oh * 2;
+        local_geometry.height -= ov * 2;
     }
 
     if (view->sticky)

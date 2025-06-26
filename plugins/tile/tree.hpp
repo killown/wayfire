@@ -191,6 +191,8 @@ struct view_node_t : public tree_node_t
     wf::signal::connection_t<tile_adjust_transformer_signal> on_adjust_transformer;
 
     wf::option_wrapper_t<wf::animation_description_t> animation_duration{"simple-tile/animation_duration"};
+    wf::option_wrapper_t<int> outer_horiz_gaps{"simple-tile/outer_horiz_gap_size"};
+    wf::option_wrapper_t<int> outer_vert_gaps{"simple-tile/outer_vert_gap_size"};
 
     /**
      * Check whether the crossfade animation should be enabled for the view

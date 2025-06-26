@@ -300,8 +300,20 @@ class tile_workspace_set_data_t : public wf::custom_data_t
                 if (view->pending_fullscreen())
                 {
                     set_view_fullscreen(view, false);
-                }
+                }                
             });
+        }
+    }
+
+    void unmaximize_all_views_on_workspace(std::shared_ptr<wf::workspace_set_t> wset)
+    {
+        for (auto& view : wset->get_views())
+        {
+            auto node = tile::view_node_t::get_node(view);
+            if (node && node->show_maximized)
+            {
+                set_view_maximized(view, false);
+            }
         }
     }
 
@@ -310,6 +322,13 @@ class tile_workspace_set_data_t : public wf::custom_data_t
         /* Set fullscreen, and trigger resizing of the views (which will commit the view) */
         view->toplevel()->pending().fullscreen = fullscreen;
         update_root_size();
+    }
+
+    void set_view_maximized(wayfire_toplevel_view view, bool should_maximize)
+    {
+            auto node = tile::view_node_t::get_node(view);
+            node->show_maximized = should_maximize;
+            update_root_size();
     }
 };
 }
