@@ -275,7 +275,13 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
     wf::key_callback on_toggle_maximized = [=] (auto)
     {
         auto view = wf::get_core().seat->get_active_view();
-        auto node = tile::view_node_t::get_node(view);
+        auto toplevel = toplevel_cast(view);
+        // skip if the workspace has no views
+        if (!toplevel)
+        {
+            return false;
+        }
+        auto node = tile::view_node_t::get_node(toplevel);
         node->show_maximized = !node->show_maximized;
         autocommit_transaction_t tx;
         node->set_geometry(node->geometry, tx.tx);
@@ -288,22 +294,36 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         {
             auto adjacent = tile::find_first_view_in_direction(
                 tile::view_node_t::get_node(view), direction);
-
-            bool was_fullscreen = view->pending_fullscreen();
-            if (adjacent)
+    
+            if (!adjacent)
+                return false;
+    
+            auto current_node = tile::view_node_t::get_node(view);
+            bool was_maximized = current_node->show_maximized;
+    
+            if (was_maximized)
             {
-                /* This will lower the fullscreen status of the view */
-                view_bring_to_front(adjacent->view);
-                wf::get_core().seat->focus_view(adjacent->view);
-
-                if (was_fullscreen && keep_fullscreen_on_adjacent)
-                {
-                    wf::get_core().default_wm->fullscreen_request(adjacent->view, output, true);
-                }
+                autocommit_transaction_t tx;
+                current_node->show_maximized = false;
+                current_node->set_geometry(current_node->geometry, tx.tx);
             }
+    
+            auto adjacent_node = tile::view_node_t::get_node(adjacent->view);
+            if (adjacent_node && was_maximized)
+            {
+                autocommit_transaction_t tx;
+                adjacent_node->show_maximized = true;
+                adjacent_node->set_geometry(adjacent_node->geometry, tx.tx);
+                
+            }
+
+            wf::get_core().seat->focus_view(adjacent->view);
+            view_bring_to_front(adjacent->view);
+    
+            return true;
         });
     }
-
+    
     wf::key_callback on_focus_adjacent = [=] (wf::keybinding_t binding)
     {
         if (binding == key_focus_left)
