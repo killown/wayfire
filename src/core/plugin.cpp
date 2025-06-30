@@ -132,7 +132,7 @@ std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
         xdg_data_dir = (std::string)c_user_home + "/.local/share/";
     }
 
-    if (xdg_data_dir != "")
+    if (xdg_data_dir.empty())
     {
         xmldirs.push_back(xdg_data_dir + "/wayfire/metadata");
     }
