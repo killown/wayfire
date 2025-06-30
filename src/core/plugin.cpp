@@ -4,6 +4,7 @@
 #include <wayfire/config-backend.hpp>
 #include <wayfire/plugin.hpp>
 #include <libudev.h>
+#include <filesystem>
 #include <wayfire/plugin.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
 
@@ -109,7 +110,9 @@ std::shared_ptr<config::section_t> wf::config_backend_t::get_input_device_sectio
 std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
 {
     std::vector<std::string> xmldirs;
-    if (char *plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
+    namespace fs = std::filesystem;
+
+    if (char* plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
     {
         std::stringstream ss(plugin_xml_path);
         std::string entry;
@@ -120,21 +123,21 @@ std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
     }
 
     // also add XDG specific paths
-    std::string xdg_data_dir;
-    char *c_xdg_data_dir = std::getenv("XDG_DATA_HOME");
-    char *c_user_home    = std::getenv("HOME");
-
-    if (c_xdg_data_dir != NULL)
+    fs::path xdg_data_dir;
+    if (char* c_xdg_data_dir = std::getenv("XDG_DATA_HOME"))
     {
-        xdg_data_dir = c_xdg_data_dir;
-    } else if (c_user_home != NULL)
+        xdg_data_dir = fs::path(c_xdg_data_dir);
+    }
+    else if (char* c_user_home = std::getenv("HOME"))
     {
-        xdg_data_dir = (std::string)c_user_home + "/.local/share/";
+        xdg_data_dir = fs::path(c_user_home) / ".local" / "share";
     }
 
     if (!xdg_data_dir.empty())
     {
-        xmldirs.push_back(xdg_data_dir + "wayfire/metadata");
+        auto metadata_path = xdg_data_dir / "wayfire" / "metadata";
+        if (fs::exists(metadata_path))
+            xmldirs.push_back(metadata_path.string());
     }
 
     xmldirs.push_back(PLUGIN_XML_DIR);
