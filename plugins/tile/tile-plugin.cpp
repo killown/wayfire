@@ -292,7 +292,7 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
 
             node->show_maximized = !node->show_maximized;
             tile_workspace_set_data_t::get(view->get_wset())
-            .set_view_maximized(view, node->show_maximized);
+                .set_view_maximized(view, node->show_maximized);
         });
     };
 
