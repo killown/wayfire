@@ -112,7 +112,7 @@ std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
     std::vector<std::string> xmldirs;
     namespace fs = std::filesystem;
 
-    if (char* plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
+    if (char *plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
     {
         std::stringstream ss(plugin_xml_path);
         std::string entry;
@@ -124,11 +124,10 @@ std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
 
     // also add XDG specific paths
     fs::path xdg_data_dir;
-    if (char* c_xdg_data_dir = std::getenv("XDG_DATA_HOME"))
+    if (char *c_xdg_data_dir = std::getenv("XDG_DATA_HOME"))
     {
         xdg_data_dir = fs::path(c_xdg_data_dir);
-    }
-    else if (char* c_user_home = std::getenv("HOME"))
+    } else if (char *c_user_home = std::getenv("HOME"))
     {
         xdg_data_dir = fs::path(c_user_home) / ".local" / "share";
     }
@@ -137,7 +136,9 @@ std::vector<std::string> wf::config_backend_t::get_xml_dirs() const
     {
         auto metadata_path = xdg_data_dir / "wayfire" / "metadata";
         if (fs::exists(metadata_path))
+        {
             xmldirs.push_back(metadata_path.string());
+        }
     }
 
     xmldirs.push_back(PLUGIN_XML_DIR);
