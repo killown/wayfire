@@ -441,9 +441,6 @@ std::shared_ptr<wayfire_layer_shell_view> wayfire_layer_shell_view::create(wlr_l
 
     lsurface->output = self->get_output()->handle;
 
-    // Initial configure
-    self->on_commit_unmapped.emit(NULL);
-
     return self;
 }
 
@@ -603,11 +600,6 @@ void wayfire_layer_shell_view::close()
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
 {
-    if (!lsurface->initialized)
-    {
-        return;
-    }
-
     auto state = &lsurface->current;
     if ((state->anchor & both_horiz) == both_horiz)
     {
