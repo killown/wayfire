@@ -45,12 +45,6 @@ static bool can_tile_view(wayfire_toplevel_view view)
     return true;
 }
 
-wf::activator_callback on_toggle_maximized = [] (auto)
-{
-    return true;
-};
-
-
 namespace wf
 {
 class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom_data_t
@@ -297,9 +291,8 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
             }
 
             node->show_maximized = !node->show_maximized;
-
-            autocommit_transaction_t tx;
-            node->set_geometry(node->geometry, tx.tx);
+            tile_workspace_set_data_t::get(view->get_wset())
+            .set_view_maximized(view, node->show_maximized);
         });
     };
 
@@ -477,6 +470,7 @@ class tile_plugin_t : public wf::plugin_interface_t, wf::per_output_tracker_mixi
 
         ipc_repo->unregister_method("simple-tile/get-layout");
         ipc_repo->unregister_method("simple-tile/set-layout");
+        ipc_repo->unregister_method("simple-tile/set-show-maximized");
     }
 
     void stop_controller(std::shared_ptr<wf::workspace_set_t> wset)

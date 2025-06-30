@@ -242,9 +242,7 @@ inline wf::json_t handle_ipc_set_show_maximized(const wf::json_t& params)
         return wf::ipc::json_error("View is not tiled");
     }
 
-    autocommit_transaction_t tx;
-    node->show_maximized = show_maximized;
-    node->set_geometry(node->geometry, tx.tx);
+    tile_workspace_set_data_t::get(view->get_wset()).set_view_maximized(view, show_maximized);
 
     return wf::ipc::json_ok();
 }
