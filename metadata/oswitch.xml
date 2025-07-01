@@ -27,22 +27,22 @@
 		<option name="left_output" type="activator">
 			<_short>Left output</_short>
 			<_long>Moves focus to the output on the left.</_long>
-			<default>&lt;super&lt; Left</default>
+			<default></default>
 		</option>
 		<option name="right_output" type="activator">
 			<_short>Right output</_short>
 			<_long>Moves focus to the output on the right.</_long>
-			<default>&lt;super&lt; Right</default>
+			<default></default>
 		</option>
 		<option name="up_output" type="activator">
 			<_short>Up output</_short>
 			<_long>Moves focus to the output above.</_long>
-			<default>&lt;super&lt; Up</default>
+			<default></default>
 		</option>
 		<option name="down_output" type="activator">
 			<_short>Down output</_short>
 			<_long>Moves focus to the output below.</_long>
-			<default>&lt;super&lt; Down</default>
+			<default></default>
 		</option>
 	</plugin>
 </wayfire>
