@@ -60,32 +60,79 @@ class wayfire_oswitch : public wf::plugin_interface_t
         {
             return nullptr;
         }
-
+    
         auto current_geo = current_output->get_layout_geometry();
-
+        wf::point_t current_center = {
+            current_geo.x + current_geo.width / 2,
+            current_geo.y + current_geo.height / 2
+        };
+    
         wf::output_t *best_output = nullptr;
         double best_score = -INFINITY;
-
+    
+        const int MIN_OVERLAP = 20;
+    
         for (auto& output : wf::get_core().output_layout->get_outputs())
         {
             if (output == current_output)
             {
                 continue;
             }
-
-            auto geo  = output->get_layout_geometry();
-            double dx = (geo.x + geo.width / 2) - (current_geo.x + current_geo.width / 2);
-            double dy = (geo.y + geo.height / 2) - (current_geo.y + current_geo.height / 2);
-
-            double score = dx * dir_x + dy * dir_y;
-
-            if ((score > 0) && ((best_output == nullptr) || (score < best_score)))
+    
+            auto geo = output->get_layout_geometry();
+            wf::point_t center = {
+                geo.x + geo.width / 2,
+                geo.y + geo.height / 2
+            };
+    
+            double dx = center.x - current_center.x;
+            double dy = center.y - current_center.y;
+    
+            if ((dir_x != 0 && dx * dir_x <= 0) ||
+                (dir_y != 0 && dy * dir_y <= 0))
+            {
+                continue;
+            }
+    
+            double ortho_overlap = 1.0;
+            if (dir_x != 0)
+            {
+                int current_top = current_geo.y;
+                int current_bottom = current_geo.y + current_geo.height;
+                int other_top = geo.y;
+                int other_bottom = geo.y + geo.height;
+                
+                int overlap = std::min(current_bottom, other_bottom) - 
+                             std::max(current_top, other_top);
+                ortho_overlap = (double)overlap / current_geo.height;
+            }
+            else if (dir_y != 0)
+            {
+                int current_left = current_geo.x;
+                int current_right = current_geo.x + current_geo.width;
+                int other_left = geo.x;
+                int other_right = geo.x + geo.width;
+                
+                int overlap = std::min(current_right, other_right) - 
+                             std::max(current_left, other_left);
+                ortho_overlap = (double)overlap / current_geo.width;
+            }
+    
+            if (ortho_overlap * 100 < MIN_OVERLAP)
+            {
+                continue;
+            }
+    
+            double distance = sqrt(dx*dx + dy*dy);
+            double score = ortho_overlap / distance;
+    
+            if (score > best_score)
             {
                 best_output = output;
-                best_score  = score;
+                best_score = score;
             }
         }
-
+    
         return best_output ? best_output : current_output;
     }
 
