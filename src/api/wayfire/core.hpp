@@ -314,6 +314,11 @@ class compositor_core_t : public wf::object_base_t, public signal::provider_t
     bool is_vulkan() const;
 
     /**
+     * Checks whether the current renderer is a Pixman renderer.
+     */
+    bool is_pixman() const;
+
+    /**
      * Returns a reference to the only core instance.
      */
     static compositor_core_t& get();

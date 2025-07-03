@@ -196,7 +196,8 @@ class WayfireSwitcher : public wf::per_output_plugin_instance_t, public wf::keyb
     {
         if (!wf::get_core().is_gles2())
         {
-            LOGE("Switcher plugin requires OpenGL ES renderer!");
+            const char* render_type = wf::get_core().is_vulkan() ? "vulkan" : (wf::get_core().is_pixman() ? "pixman" : "unknown");
+            LOGE("switcher: requires GLES2 support, but current renderer is ", render_type);
             return;
         }
 

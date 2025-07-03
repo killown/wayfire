@@ -925,7 +925,8 @@ class wayfire_wobbly : public wf::plugin_interface_t
     {
         if (!wf::get_core().is_gles2())
         {
-            LOGE("Wobbly requires GLES2 renderer!");
+            const char* render_type = wf::get_core().is_vulkan() ? "vulkan" : (wf::get_core().is_pixman() ? "pixman" : "unknown");
+            LOGE("wobbly: requires GLES2 support, but current renderer is ", render_type);
             return;
         }
 

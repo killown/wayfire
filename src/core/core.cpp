@@ -90,6 +90,11 @@ bool wf::compositor_core_t::is_vulkan() const
 #endif
 }
 
+bool wf::compositor_core_t::is_pixman() const
+{
+    return wlr_renderer_is_pixman(renderer);
+}
+
 void wf::compositor_core_impl_t::init()
 {
     this->scene_root = std::make_shared<scene::root_node_t>();
