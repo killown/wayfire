@@ -776,7 +776,8 @@ class wayfire_cube_global : public wf::plugin_interface_t,
     {
         if (!wf::get_core().is_gles2())
         {
-            const char* render_type = wf::get_core().is_vulkan() ? "vulkan" : (wf::get_core().is_pixman() ? "pixman" : "unknown");
+            const char *render_type =
+                wf::get_core().is_vulkan() ? "vulkan" : (wf::get_core().is_pixman() ? "pixman" : "unknown");
             LOGE("cube: requires GLES2 support, but current renderer is ", render_type);
             return;
         }
