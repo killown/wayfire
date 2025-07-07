@@ -283,12 +283,13 @@ class ipc_rules_utility_methods_t
             return wf::ipc::json_error("Options must be an object!");
         }
 
-        const char *config_file = std::getenv("WAYFIRE_CONFIG_FILE");
+        const char *config_file     = std::getenv("WAYFIRE_CONFIG_FILE");
         std::string config_file_str = config_file ? config_file : "wayfire.ini";
-  
+
         if (warning_count <= MAX_WARNINGS)
         {
-            LOGW("Config options set via IPC will not update from ", config_file_str, " until Wayfire restart.");
+            LOGW("Config options set via IPC will not update from ", config_file_str,
+                " until Wayfire restart.");
             warning_count++;
         }
 
