@@ -23,12 +23,12 @@ class wayfire_oswitch : public wf::plugin_interface_t
         return get_output_in_direction(1, 0);
     }
 
-    wf::output_t *get_up_output()
+    wf::output_t *get_above_output()
     {
         return get_output_in_direction(0, -1);
     }
 
-    wf::output_t *get_down_output()
+    wf::output_t *get_below_output()
     {
         return get_output_in_direction(0, 1);
     }
@@ -210,14 +210,14 @@ class wayfire_oswitch : public wf::plugin_interface_t
 
     wf::activator_callback switch_up = [=] (auto)
     {
-        auto target_output = get_up_output();
+        auto target_output = get_above_output();
         switch_to_output(target_output);
         return true;
     };
 
     wf::activator_callback switch_down = [=] (auto)
     {
-        auto target_output = get_down_output();
+        auto target_output = get_below_output();
         switch_to_output(target_output);
         return true;
     };
@@ -238,9 +238,9 @@ class wayfire_oswitch : public wf::plugin_interface_t
             &switch_left);
         bindings->add_activator(wf::option_wrapper_t<wf::activatorbinding_t>{"oswitch/right_output"},
             &switch_right);
-        bindings->add_activator(wf::option_wrapper_t<wf::activatorbinding_t>{"oswitch/up_output"},
+        bindings->add_activator(wf::option_wrapper_t<wf::activatorbinding_t>{"oswitch/above_output"},
             &switch_up);
-        bindings->add_activator(wf::option_wrapper_t<wf::activatorbinding_t>{"oswitch/down_output"},
+        bindings->add_activator(wf::option_wrapper_t<wf::activatorbinding_t>{"oswitch/below_output"},
             &switch_down);
     }
 

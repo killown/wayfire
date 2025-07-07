@@ -34,13 +34,13 @@
 			<_long>Moves focus to the output on the right.</_long>
 			<default></default>
 		</option>
-		<option name="up_output" type="activator">
-			<_short>Up output</_short>
+		<option name="above_output" type="activator">
+			<_short>Above output</_short>
 			<_long>Moves focus to the output above.</_long>
 			<default></default>
 		</option>
-		<option name="down_output" type="activator">
-			<_short>Down output</_short>
+		<option name="below_output" type="activator">
+			<_short>Below output</_short>
 			<_long>Moves focus to the output below.</_long>
 			<default></default>
 		</option>
