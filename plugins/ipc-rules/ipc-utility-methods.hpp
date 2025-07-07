@@ -23,6 +23,8 @@ class ipc_rules_utility_methods_t
   private:
     wlr_backend *headless_backend = NULL;
     std::set<uint64_t> our_outputs;
+    int warning_count = 0;
+    const int MAX_WARNINGS = 5;
 
   public:
     void init_utility_methods(ipc::method_repository_t *method_repository)
@@ -284,7 +286,11 @@ class ipc_rules_utility_methods_t
         const char *config_file = std::getenv("WAYFIRE_CONFIG_FILE");
         std::string config_file_str = config_file ? config_file : "wayfire.ini";
   
-        LOGW("Config options set via IPC will not update from ", config_file_str, " until Wayfire restart.");
+        if (warning_count <= MAX_WARNINGS)
+        {
+            LOGW("Config options set via IPC will not update from ", config_file_str, " until Wayfire restart.");
+            warning_count++;
+        }
 
         for (auto& option : data.get_member_names())
         {
