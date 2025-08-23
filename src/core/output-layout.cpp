@@ -528,7 +528,7 @@ struct output_layout_output_t
         wf::output_config::mode_t mode = mode_opt;
         wlr_output_mode tmp;
 
-        LOGI("loaded mode ",
+        LOGD("loaded mode ",
             ((wf::option_sptr_t<wf::output_config::mode_t>)mode_opt)->get_value_str());
 
         switch (mode.get_type())
