@@ -309,7 +309,6 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
             }
 
             auto current_node  = tile::view_node_t::get_node(view);
-            auto adjacent_node = tile::view_node_t::get_node(adjacent->view);
             bool was_maximized = current_node->show_maximized;
 
             if (was_maximized)
@@ -319,8 +318,8 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
                 current_node->show_maximized = false;
                 current_node->set_geometry(current_node->geometry, tx.tx);
 
-                adjacent_node->show_maximized = true;
-                adjacent_node->set_geometry(adjacent_node->geometry, tx.tx);
+                adjacent->show_maximized = true;
+                adjacent->set_geometry(adjacent->geometry, tx.tx);
             }
 
             wf::get_core().seat->focus_view(adjacent->view);
