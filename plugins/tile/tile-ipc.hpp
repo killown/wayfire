@@ -217,11 +217,6 @@ inline std::unique_ptr<tile::tree_node_t> build_tree_from_json(const wf::json_t&
 
 inline wf::json_t handle_ipc_set_show_maximized(const wf::json_t& params)
 {
-    if (!params.has_member("view-id"))
-    {
-        return wf::ipc::json_error("Missing 'view-id' field");
-    }
-
     uint64_t view_id = wf::ipc::json_get_uint64(params, "view-id");
     auto view = wf::toplevel_cast(wf::ipc::find_view_by_id(view_id));
     if (!view)

@@ -302,40 +302,37 @@ class tile_output_plugin_t : public wf::pointer_interaction_t, public wf::custom
         {
             auto adjacent = tile::find_first_view_in_direction(
                 tile::view_node_t::get_node(view), direction);
-
+    
             if (!adjacent)
             {
                 return false;
             }
-
+    
             auto current_node  = tile::view_node_t::get_node(view);
+            auto adjacent_node = tile::view_node_t::get_node(adjacent->view);
             bool was_maximized = current_node->show_maximized;
-
+    
             if (was_maximized)
             {
                 autocommit_transaction_t tx;
+    
                 current_node->show_maximized = false;
                 current_node->set_geometry(current_node->geometry, tx.tx);
-            }
-
-            auto adjacent_node = tile::view_node_t::get_node(adjacent->view);
-            if (adjacent_node && was_maximized)
-            {
-                autocommit_transaction_t tx;
+    
                 adjacent_node->show_maximized = true;
                 adjacent_node->set_geometry(adjacent_node->geometry, tx.tx);
             }
-
+    
             wf::get_core().seat->focus_view(adjacent->view);
             view_bring_to_front(adjacent->view);
-
+    
             /* This will lower the fullscreen status of the view */
             bool was_fullscreen = view->pending_fullscreen();
             if (was_fullscreen && keep_fullscreen_on_adjacent)
             {
                 wf::get_core().default_wm->fullscreen_request(adjacent->view, output, true);
             }
-
+    
             return true;
         });
     }
