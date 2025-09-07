@@ -120,16 +120,21 @@ class ipc_rules_utility_methods_t
 
     wf::ipc::method_callback list_config_options = [=] (const wf::json_t& data)
     {
-        auto response     = wf::ipc::json_ok();
-        auto options_json = wf::json_t::array();
+        auto response = wf::ipc::json_ok();
+        wf::json_t sections_json;
+        sections_json = wf::json_t();
 
         for (auto& section : wf::get_core().config->get_all_sections())
         {
+            std::string section_name = section->get_name();
+            wf::json_t section_obj;
+            section_obj = wf::json_t();
+
             for (auto& opt : section->get_registered_options())
             {
                 wf::json_t entry;
-                entry["name"]    = opt->get_name();
-                entry["section"] = section->get_name();
+                entry = wf::json_t();
+                std::string option_name = opt->get_name();
 
                 auto compound = std::dynamic_pointer_cast<wf::config::compound_option_t>(opt);
                 if (compound)
@@ -154,11 +159,13 @@ class ipc_rules_utility_methods_t
                     entry["default"] = opt->get_default_value_str();
                 }
 
-                options_json.append(entry);
+                section_obj[option_name] = entry;
             }
+
+            sections_json[section_name] = section_obj;
         }
 
-        response["options"] = options_json;
+        response["options"] = sections_json;
         return response;
     };
 
