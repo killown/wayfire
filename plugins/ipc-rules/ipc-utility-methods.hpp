@@ -31,6 +31,7 @@ class ipc_rules_utility_methods_t
         method_repository->register_method("wayfire/create-headless-output", create_headless_output);
         method_repository->register_method("wayfire/destroy-headless-output", destroy_headless_output);
         method_repository->register_method("wayfire/get-config-option", get_config_option);
+        method_repository->register_method("wayfire/list-config-options", list_config_options);
         method_repository->register_method("wayfire/set-config-options", set_config_options);
         method_repository->register_method("wayfire/get-keyboard-state", get_kb_state);
         method_repository->register_method("wayfire/set-keyboard-state", set_kb_state);
@@ -115,6 +116,50 @@ class ipc_rules_utility_methods_t
         our_outputs.erase(wo->get_id());
         wlr_output_destroy(wo->handle);
         return wf::ipc::json_ok();
+    };
+
+    wf::ipc::method_callback list_config_options = [=] (const wf::json_t& data)
+    {
+        auto response     = wf::ipc::json_ok();
+        auto options_json = wf::json_t::array();
+
+        for (auto& section : wf::get_core().config->get_all_sections())
+        {
+            for (auto& opt : section->get_registered_options())
+            {
+                wf::json_t entry;
+                entry["name"]    = opt->get_name();
+                entry["section"] = section->get_name();
+
+                auto compound = std::dynamic_pointer_cast<wf::config::compound_option_t>(opt);
+                if (compound)
+                {
+                    auto values  = wf::json_t::array();
+                    auto untyped = compound->get_value_untyped();
+                    for (size_t i = 0; i < untyped.size(); i++)
+                    {
+                        auto inner = wf::json_t::array();
+                        for (size_t j = 0; j < untyped[i].size(); j++)
+                        {
+                            inner.append(untyped[i][j]);
+                        }
+
+                        values.append(inner);
+                    }
+
+                    entry["value"] = values;
+                } else
+                {
+                    entry["value"]   = opt->get_value_str();
+                    entry["default"] = opt->get_default_value_str();
+                }
+
+                options_json.append(entry);
+            }
+        }
+
+        response["options"] = options_json;
+        return response;
     };
 
     wf::ipc::method_callback get_config_option = [=] (const wf::json_t& data)
