@@ -16,6 +16,11 @@
 				<_long>Toggles scale showing windows from all workspaces.</_long>
 				<default></default>
 			</option>
+			<option name="toggle_all_outputs" type="activator">
+				<_short>Toggle for all workspaces across all outputs</_short>
+				<_long>Toggles scale showing windows from all workspaces across all outputs.</_long>
+				<default></default>
+			</option>
 			<option name="duration" type="animation">
 				<_short>Animation Transition Time</_short>
 				<_long>Time it takes for views to transition. Units are in milliseconds.</_long>

@@ -1466,6 +1466,7 @@ class wayfire_scale_global : public wf::plugin_interface_t,
 {
     wf::ipc_activator_t toggle_ws{"scale/toggle"};
     wf::ipc_activator_t toggle_all{"scale/toggle_all"};
+    wf::ipc_activator_t toggle_all_outputs{"scale/toggle_all_outputs"};
 
   public:
     void init() override
@@ -1473,6 +1474,7 @@ class wayfire_scale_global : public wf::plugin_interface_t,
         this->init_output_tracking();
         toggle_ws.set_handler(toggle_cb);
         toggle_all.set_handler(toggle_all_cb);
+        toggle_all_outputs.set_handler(toggle_all_outputs_cb);
     }
 
     void fini() override
@@ -1531,6 +1533,20 @@ class wayfire_scale_global : public wf::plugin_interface_t,
         }
 
         return false;
+    };
+
+    wf::ipc_activator_t::handler_t toggle_all_outputs_cb = [=] (wf::output_t *output, wayfire_view)
+    {
+        bool any_activated = false;
+        for (auto& [output, instance] : this->output_instance)
+        {
+            if (instance->handle_toggle(true))
+            {
+                output->render->schedule_redraw();
+                any_activated = true;
+            }
+        }
+        return any_activated;
     };
 };
 
