@@ -45,9 +45,9 @@ wf::xdg_toplevel_view_base_t::xdg_toplevel_view_base_t(wlr_xdg_toplevel *topleve
 
         on_set_title.set_callback([&] (void*)
         {
-            LOGI("new xdg_shell_stable surface: ",  "(title: '", xdg_toplevel->title, "' app-id: '", xdg_toplevel->app_id, "')");
+            LOGI("new xdg_shell_stable surface: ", "(title: '", xdg_toplevel->title, "' app-id: '",
+                xdg_toplevel->app_id, "')");
         });
-
     });
     on_ping_timeout.set_callback([&] (void*)
 
