@@ -1546,6 +1546,7 @@ class wayfire_scale_global : public wf::plugin_interface_t,
                 any_activated = true;
             }
         }
+
         return any_activated;
     };
 };
