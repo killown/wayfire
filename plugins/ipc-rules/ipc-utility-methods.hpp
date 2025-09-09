@@ -43,6 +43,7 @@ class ipc_rules_utility_methods_t
         method_repository->unregister_method("wayfire/create-headless-output");
         method_repository->unregister_method("wayfire/destroy-headless-output");
         method_repository->unregister_method("wayfire/get-config-option");
+        method_repository->unregister_method("wayfire/list-config-options");
         method_repository->unregister_method("wayfire/set-config-option");
         method_repository->unregister_method("wayfire/get-keyboard-state");
         method_repository->unregister_method("wayfire/set-keyboard-state");
