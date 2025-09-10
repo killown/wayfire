@@ -2,7 +2,7 @@
 #define WF_CORE_CORE_IMPL_HPP
 
 #include <sys/resource.h>
-#include "core/plugin-loader.hpp"
+#include "src/core/plugin-loader.hpp"
 #include "wayfire/core.hpp"
 #include "wayfire/scene-input.hpp"
 #include "wayfire/scene.hpp"
@@ -103,8 +103,6 @@ class compositor_core_impl_t : public compositor_core_t
 };
 
 compositor_core_impl_t& get_core_impl();
-
-void priv_output_layout_fini(wf::output_layout_t *layout);
 }
 
 #endif /* end of include guard: WF_CORE_CORE_IMPL_HPP */

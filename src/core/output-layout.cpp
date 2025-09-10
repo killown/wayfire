@@ -7,6 +7,7 @@
 #include "wayfire/signal-definitions.hpp"
 #include "wayfire/util.hpp"
 #include "wayfire/config-backend.hpp"
+#include "output-layout-priv.hpp"
 
 #include "../output/output-impl.hpp"
 #include <xf86drmMode.h>
@@ -110,7 +111,7 @@ static wl_output_transform get_transform_from_string(std::string transform)
     return WL_OUTPUT_TRANSFORM_NORMAL;
 }
 
-static std::string wl_transform_to_string(wl_output_transform transform)
+std::string wf::layout_detail::wl_transform_to_string(wl_output_transform transform)
 {
     for (auto& it : output_transforms)
     {
@@ -121,6 +122,29 @@ static std::string wl_transform_to_string(wl_output_transform transform)
     }
 
     return "normal";
+}
+
+std::string_view wf::layout_detail::get_output_source_name(output_image_source_t source)
+{
+    switch (source)
+    {
+      case OUTPUT_IMAGE_SOURCE_INVALID:
+        return "invalid";
+
+      case OUTPUT_IMAGE_SOURCE_SELF:
+        return "self";
+
+      case OUTPUT_IMAGE_SOURCE_NONE:
+        return "none";
+
+      case OUTPUT_IMAGE_SOURCE_DPMS:
+        return "dpms";
+
+      case OUTPUT_IMAGE_SOURCE_MIRROR:
+        return "mirror";
+    }
+
+    return "unknown";
 }
 
 wlr_output_mode *find_matching_mode(wlr_output *output,
@@ -1532,29 +1556,6 @@ class output_layout_t::impl
         return ok;
     }
 
-    static std::string_view get_output_source_name(output_image_source_t source)
-    {
-        switch (source)
-        {
-          case OUTPUT_IMAGE_SOURCE_INVALID:
-            return "invalid";
-
-          case OUTPUT_IMAGE_SOURCE_SELF:
-            return "self";
-
-          case OUTPUT_IMAGE_SOURCE_NONE:
-            return "none";
-
-          case OUTPUT_IMAGE_SOURCE_DPMS:
-            return "dpms";
-
-          case OUTPUT_IMAGE_SOURCE_MIRROR:
-            return "mirror";
-        }
-
-        return "unknown";
-    }
-
     /** Apply the given configuration. Config MUST be a valid configuration */
     void apply_configuration(const output_configuration_t& config)
     {
@@ -1588,7 +1589,7 @@ class output_layout_t::impl
             }
 
             LOGC(OUTPUT, "\t  scale: ", entry.second.scale);
-            LOGC(OUTPUT, "\t  transform: ", wl_transform_to_string(entry.second.transform));
+            LOGC(OUTPUT, "\t  transform: ", layout_detail::wl_transform_to_string(entry.second.transform));
             LOGC(OUTPUT, "\t  vrr: ", entry.second.vrr);
             LOGC(OUTPUT, "\t  depth: ", entry.second.depth);
         }
@@ -1966,7 +1967,7 @@ bool output_layout_t::apply_configuration(
     return pimpl->apply_configuration(configuration, test_only);
 }
 
-void priv_output_layout_fini(wf::output_layout_t *layout)
+void layout_detail::priv_output_layout_fini(wf::output_layout_t *layout)
 {
     layout->pimpl->fini();
 }

@@ -15,6 +15,7 @@
 #include "wayfire/config-backend.hpp" // IWYU pragma: keep
 
 #include "plugin-loader.hpp"
+#include "output-layout-priv.hpp"
 #include "seat/tablet.hpp"
 #include "wayfire/touch/touch.hpp"
 #include "wayfire/view.hpp"
@@ -350,7 +351,7 @@ void wf::compositor_core_impl_t::fini()
     LOGI("Stopping clients...");
     wl_display_destroy_clients(static_core->display);
     LOGI("Freeing resources...");
-    priv_output_layout_fini(output_layout.get());
+    layout_detail::priv_output_layout_fini(output_layout.get());
     default_wm.reset();
     bindings.reset();
     scene_root.reset();
