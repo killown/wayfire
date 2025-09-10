@@ -31,6 +31,7 @@ class ipc_rules_utility_methods_t
         method_repository->register_method("wayfire/create-headless-output", create_headless_output);
         method_repository->register_method("wayfire/destroy-headless-output", destroy_headless_output);
         method_repository->register_method("wayfire/get-config-option", get_config_option);
+        method_repository->register_method("wayfire/list-config-options", list_config_options);
         method_repository->register_method("wayfire/set-config-options", set_config_options);
         method_repository->register_method("wayfire/get-keyboard-state", get_kb_state);
         method_repository->register_method("wayfire/set-keyboard-state", set_kb_state);
@@ -42,6 +43,7 @@ class ipc_rules_utility_methods_t
         method_repository->unregister_method("wayfire/create-headless-output");
         method_repository->unregister_method("wayfire/destroy-headless-output");
         method_repository->unregister_method("wayfire/get-config-option");
+        method_repository->unregister_method("wayfire/list-config-options");
         method_repository->unregister_method("wayfire/set-config-option");
         method_repository->unregister_method("wayfire/get-keyboard-state");
         method_repository->unregister_method("wayfire/set-keyboard-state");
@@ -117,6 +119,59 @@ class ipc_rules_utility_methods_t
         return wf::ipc::json_ok();
     };
 
+    wf::json_t option_value_to_json(const std::shared_ptr<wf::config::option_base_t>& option)
+    {
+        if (auto compound = std::dynamic_pointer_cast<wf::config::compound_option_t>(option))
+        {
+            wf::json_t values_json = wf::json_t::array();
+            auto untyped = compound->get_value_untyped();
+
+            for (const auto& tuple : untyped)
+            {
+                wf::json_t inner = wf::json_t::array();
+                for (const auto& val : tuple)
+                {
+                    inner.append(val);
+                }
+
+                values_json.append(inner);
+            }
+
+            wf::json_t entry = wf::json_t();
+            entry["value"] = values_json;
+            return entry;
+        } else
+        {
+            wf::json_t entry = wf::json_t();
+            entry["value"]   = option->get_value_str();
+            entry["default"] = option->get_default_value_str();
+            return entry;
+        }
+    }
+
+    wf::ipc::method_callback list_config_options = [=] (const wf::json_t& data)
+    {
+        auto response = wf::ipc::json_ok();
+        wf::json_t sections_json = wf::json_t();
+
+        for (auto& section : wf::get_core().config->get_all_sections())
+        {
+            std::string section_name = section->get_name();
+            wf::json_t section_obj   = wf::json_t();
+
+            for (auto& opt : section->get_registered_options())
+            {
+                std::string option_name = opt->get_name();
+                section_obj[option_name] = this->option_value_to_json(opt);
+            }
+
+            sections_json[section_name] = section_obj;
+        }
+
+        response["options"] = sections_json;
+        return response;
+    };
+
     wf::ipc::method_callback get_config_option = [=] (const wf::json_t& data)
     {
         auto option_name = wf::ipc::json_get_string(data, "option");
@@ -127,34 +182,12 @@ class ipc_rules_utility_methods_t
         }
 
         auto response = wf::ipc::json_ok();
-
-        std::shared_ptr<wf::config::compound_option_t> compound_option =
-            std::dynamic_pointer_cast<wf::config::compound_option_t>(option);
-
-        if (compound_option)
+        auto entry    = this->option_value_to_json(option);
+        for (auto& key : entry.get_member_names())
         {
-            wf::config::compound_option_t::stored_type_t values = compound_option->get_value_untyped();
-
-            auto values_json = wf::json_t::array();
-            for (size_t i = 0; i < values.size(); i++)
-            {
-                auto values_json_ith = wf::json_t::array();
-                for (size_t j = 0; j < values[i].size(); j++)
-                {
-                    values_json_ith.append(values[i][j]);
-                }
-
-                values_json.append(values_json_ith);
-            }
-
-            response["value"] = values_json;
-
-            return response;
+            response[key] = entry[key];
         }
 
-        // Normal option - can be converted into a string
-        response["value"]   = option->get_value_str();
-        response["default"] = option->get_default_value_str();
         return response;
     };
 
