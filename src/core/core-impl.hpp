@@ -2,7 +2,7 @@
 #define WF_CORE_CORE_IMPL_HPP
 
 #include <sys/resource.h>
-#include "core/plugin-loader.hpp"
+#include "src/core/plugin-loader.hpp"
 #include "wayfire/core.hpp"
 #include "wayfire/scene-input.hpp"
 #include "wayfire/scene.hpp"
@@ -76,6 +76,9 @@ class compositor_core_impl_t : public compositor_core_t
     compositor_core_impl_t();
     virtual ~compositor_core_impl_t();
 
+    void register_filter(wayland_global_filter_t *filter);
+    void unregister_filter(wayland_global_filter_t *filter);
+
   protected:
     wf::wl_listener_wrapper vkbd_created;
     wf::wl_listener_wrapper vptr_created;
@@ -85,6 +88,9 @@ class compositor_core_impl_t : public compositor_core_t
     wf::wl_listener_wrapper idle_inhibitor_created;
     wf::wl_listener_wrapper drm_lease_request;
     std::shared_ptr<scene::root_node_t> scene_root;
+
+    std::vector<wayland_global_filter_t*> wayland_global_filters;
+    static bool global_filter(const wl_client *client, const wl_global *global, void *data);
 
     compositor_state_t state = compositor_state_t::UNKNOWN;
     struct rlimit user_maxfiles;
@@ -97,8 +103,6 @@ class compositor_core_impl_t : public compositor_core_t
 };
 
 compositor_core_impl_t& get_core_impl();
-
-void priv_output_layout_fini(wf::output_layout_t *layout);
 }
 
 #endif /* end of include guard: WF_CORE_CORE_IMPL_HPP */
