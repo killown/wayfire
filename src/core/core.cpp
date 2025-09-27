@@ -133,7 +133,8 @@ void wf::compositor_core_impl_t::init()
             wlr_primary_selection_v1_device_manager_create(display);
     }
 
-    protocols.data_control = wlr_data_control_manager_v1_create(display);
+    protocols.data_control     = wlr_data_control_manager_v1_create(display);
+    protocols.ext_data_control = wlr_ext_data_control_manager_v1_create(display, 1);
 
     output_layout = std::make_unique<wf::output_layout_t>(backend);
     init_desktop_apis();
@@ -144,7 +145,10 @@ void wf::compositor_core_impl_t::init()
     seat  = std::make_unique<wf::seat_t>(display, "default");
 
     protocols.screencopy = wlr_screencopy_manager_v1_create(display);
-    protocols.gamma_v1   = wlr_gamma_control_manager_v1_create(display);
+    protocols.foreign_toplevel_list = wlr_ext_foreign_toplevel_list_v1_create(display, 1);
+    protocols.image_copy_capture    = wlr_ext_image_copy_capture_manager_v1_create(display, 1);
+    protocols.image_capture_source  = wlr_ext_output_image_capture_source_manager_v1_create(display, 1);
+    protocols.gamma_v1 = wlr_gamma_control_manager_v1_create(display);
     protocols.export_dmabuf  = wlr_export_dmabuf_manager_v1_create(display);
     protocols.output_manager = wlr_xdg_output_manager_v1_create(display,
         output_layout->get_handle());
