@@ -10,22 +10,35 @@
 
 // private API, used to make it easier to serialize output state
 #include "src/core/output-layout-priv.hpp"
+#include "wayfire/txn/transaction-manager.hpp"
 
 namespace wf
 {
 class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
 {
+    static constexpr const char *PRE_MAP_EVENT = "view-pre-map";
+
   public:
     void init_events(ipc::method_repository_t *method_repository)
     {
         method_repository->register_method("window-rules/events/watch", on_client_watch);
+        method_repository->register_method("window-rules/unblock-map", on_client_unblock_map);
         method_repository->connect(&on_client_disconnected);
+        method_repository->connect(&on_custom_event);
+
+        signal_map[PRE_MAP_EVENT] = signal_registration_handler{
+            .register_core = [=] () { wf::get_core().tx_manager->connect(&on_new_tx); },
+            .unregister    = [=] () { on_new_tx.disconnect(); },
+            .auto_register = false,
+        };
+
         init_output_tracking();
     }
 
     void fini_events(ipc::method_repository_t *method_repository)
     {
         method_repository->unregister_method("window-rules/events/watch");
+        method_repository->unregister_method("window-rules/unblock-map");
         fini_output_tracking();
     }
 
@@ -43,6 +56,12 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     void handle_output_removed(wf::output_t *output) override
     {}
 
+    wf::signal::connection_t<wf::ipc_rules::detail::custom_event_signal_t> on_custom_event =
+        [=] (wf::ipc_rules::detail::custom_event_signal_t *ev)
+    {
+        send_event_to_subscribes(ev->data, ev->data["event"].as_string(), true);
+    };
+
     // Template FOO for efficient management of signals: ensure that only actually listened-for signals
     // are connected.
     struct signal_registration_handler
@@ -51,6 +70,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         std::function<void(wf::output_t*)> register_output = [] (wf::output_t*) {};
         std::function<void()> unregister = [] () {};
         int connected_count = 0;
+        bool auto_register  = true;
 
         void increase_count()
         {
@@ -135,8 +155,14 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         {"wset-workspace-changed", get_generic_output_registration_cb(&on_wset_workspace_changed)},
     };
 
+    struct client_watch_state_t
+    {
+        std::set<std::string> connected_events;
+        bool connected_all = false;
+    };
+
     // Track a list of clients which have requested watch
-    std::map<wf::ipc::client_interface_t*, std::set<std::string>> clients;
+    std::map<wf::ipc::client_interface_t*, client_watch_state_t> clients;
 
     wf::ipc::method_callback_full on_client_watch =
         [=] (wf::json_t data, wf::ipc::client_interface_t *client)
@@ -147,7 +173,12 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
             return wf::ipc::json_error("Event list is not an array!");
         }
 
-        std::set<std::string> subscribed_to;
+        if (clients.count(client))
+        {
+            return wf::ipc::json_error("Client is already watching events!");
+        }
+
+        client_watch_state_t state;
         if (data.has_member(EVENTS))
         {
             for (size_t i = 0; i < data[EVENTS].size(); i++)
@@ -158,9 +189,12 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
                     return wf::ipc::json_error("Event list contains non-string entries!");
                 }
 
-                if (signal_map.count(sub))
+                const auto& event_name = sub.as_string();
+                const bool is_known_builtin_event = signal_map.count(event_name);
+                const bool is_custom_event = !event_name.empty() && event_name.back() == '#';
+                if (is_known_builtin_event || is_custom_event)
                 {
-                    subscribed_to.insert(sub);
+                    state.connected_events.insert(sub.as_string());
                 } else
                 {
                     return wf::ipc::json_error("Event not found: \"" + sub.as_string() + "\"");
@@ -168,25 +202,29 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
             }
         } else
         {
-            for (auto& [ev_name, _] : signal_map)
+            state.connected_all = true;
+            for (auto& [ev_name, ev] : signal_map)
             {
-                subscribed_to.insert(ev_name);
+                if (ev.auto_register)
+                {
+                    state.connected_events.insert(ev_name);
+                }
             }
         }
 
-        for (auto& ev_name : subscribed_to)
+        for (auto& ev_name : state.connected_events)
         {
             signal_map[ev_name].increase_count();
         }
 
-        clients[client] = subscribed_to;
+        clients[client] = std::move(state);
         return wf::ipc::json_ok();
     };
 
     wf::signal::connection_t<wf::ipc::client_disconnected_signal> on_client_disconnected =
         [=] (wf::ipc::client_disconnected_signal *ev)
     {
-        for (auto& ev_name : clients[ev->client])
+        for (auto& ev_name : clients[ev->client].connected_events)
         {
             signal_map[ev_name].decrease_count();
         }
@@ -198,15 +236,17 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t event;
         event["event"] = event_name;
-        event["view"]  = view_to_json(view);
+        event["view"]  = ipc_rules::view_to_json(view);
         send_event_to_subscribes(event, event_name);
     }
 
-    void send_event_to_subscribes(const wf::json_t& data, const std::string& event_name)
+    void send_event_to_subscribes(const wf::json_t& data, const std::string& event_name,
+        bool custom_event = false)
     {
-        for (auto& [client, events] : clients)
+        for (auto& [client, state] : clients)
         {
-            if (events.empty() || events.count(event_name))
+            if (state.connected_events.empty() || state.connected_events.count(event_name) ||
+                (custom_event && state.connected_all))
             {
                 client->send_json(data);
             }
@@ -228,8 +268,8 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t data;
         data["event"]  = "view-set-output";
-        data["output"] = output_to_json(ev->output);
-        data["view"]   = view_to_json(ev->view);
+        data["output"] = ipc_rules::output_to_json(ev->output);
+        data["view"]   = ipc_rules::view_to_json(ev->view);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -239,7 +279,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t data;
         data["event"]  = "output-added";
-        data["output"] = output_to_json(ev->output);
+        data["output"] = ipc_rules::output_to_json(ev->output);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -248,7 +288,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t data;
         data["event"]  = "output-removed";
-        data["output"] = output_to_json(ev->output);
+        data["output"] = ipc_rules::output_to_json(ev->output);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -295,7 +335,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         wf::json_t data;
         data["event"] = "view-geometry-changed";
         data["old-geometry"] = wf::ipc::geometry_to_json(ev->old_geometry);
-        data["view"] = view_to_json(ev->view);
+        data["view"] = ipc_rules::view_to_json(ev->view);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -304,9 +344,9 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t data;
         data["event"]    = "view-wset-changed";
-        data["old-wset"] = wset_to_json(ev->old_wset.get());
-        data["new-wset"] = wset_to_json(ev->new_wset.get());
-        data["view"]     = view_to_json(ev->view);
+        data["old-wset"] = ipc_rules::wset_to_json(ev->old_wset.get());
+        data["new-wset"] = ipc_rules::wset_to_json(ev->new_wset.get());
+        data["view"]     = ipc_rules::view_to_json(ev->view);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -323,7 +363,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         data["event"]     = "view-tiled";
         data["old-edges"] = ev->old_edges;
         data["new-edges"] = ev->new_edges;
-        data["view"] = view_to_json(ev->view);
+        data["view"] = ipc_rules::view_to_json(ev->view);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -352,7 +392,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         data["event"] = "view-workspace-changed";
         data["from"]  = wf::ipc::point_to_json(ev->from);
         data["to"]    = wf::ipc::point_to_json(ev->to);
-        data["view"]  = view_to_json(ev->view);
+        data["view"]  = ipc_rules::view_to_json(ev->view);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -376,7 +416,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         data["plugin"] = ev->plugin_name;
         data["state"]  = ev->activated;
         data["output"] = ev->output ? (int)ev->output->get_id() : -1;
-        data["output-data"] = output_to_json(ev->output);
+        data["output-data"] = ipc_rules::output_to_json(ev->output);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -385,7 +425,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
     {
         wf::json_t data;
         data["event"]  = "output-gain-focus";
-        data["output"] = output_to_json(ev->output);
+        data["output"] = ipc_rules::output_to_json(ev->output);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -401,7 +441,7 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
 
         wf::json_t data;
         data["event"] = "keyboard-modifier-state-changed";
-        data["state"] = get_keyboard_state(keyboard);
+        data["state"] = ipc_rules::get_keyboard_state(keyboard);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -412,8 +452,8 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         data["event"]    = "output-wset-changed";
         data["new-wset"] = ev->new_wset ? (int)ev->new_wset->get_id() : -1;
         data["output"]   = ev->output ? (int)ev->output->get_id() : -1;
-        data["new-wset-data"] = wset_to_json(ev->new_wset.get());
-        data["output-data"]   = output_to_json(ev->output);
+        data["new-wset-data"] = ipc_rules::wset_to_json(ev->new_wset.get());
+        data["output-data"]   = ipc_rules::output_to_json(ev->output);
         send_event_to_subscribes(data, data["event"]);
     };
 
@@ -426,10 +466,134 @@ class ipc_rules_events_methods_t : public wf::per_output_tracker_mixin_t<>
         data["new-workspace"] = wf::ipc::point_to_json(ev->new_viewport);
         data["output"] = ev->output ? (int)ev->output->get_id() : -1;
         data["wset"]   = (ev->output && ev->output->wset()) ? (int)ev->output->wset()->get_id() : -1;
-        data["output-data"] = output_to_json(ev->output);
+        data["output-data"] = ipc_rules::output_to_json(ev->output);
         data["wset-data"]   =
-            ev->output ? wset_to_json(ev->output->wset().get()) : json_t::null();
+            ev->output ? ipc_rules::wset_to_json(ev->output->wset().get()) : json_t::null();
         send_event_to_subscribes(data, data["event"]);
+    };
+
+    class ipc_delay_object_t : public txn::transaction_object_t
+    {
+      public:
+        ipc_delay_object_t(std::string name) : obj_name(name)
+        {}
+
+        std::string stringify() const override
+        {
+            return obj_name;
+        }
+
+        void commit() override
+        {
+            if (delay_count < 1)
+            {
+                wf::txn::emit_object_ready(this);
+            }
+        }
+
+        void apply() override
+        {
+            delay_count = 0;
+        }
+
+        void set_delay(int count)
+        {
+            delay_count = count;
+        }
+
+        void reduce_delay()
+        {
+            delay_count--;
+            if (delay_count == 0)
+            {
+                wf::txn::emit_object_ready(this);
+            }
+        }
+
+        bool currently_blocking() const
+        {
+            return delay_count > 0;
+        }
+
+      private:
+        std::string obj_name;
+        int delay_count = 0;
+    };
+
+    using ipc_delay_object_sptr = std::shared_ptr<ipc_delay_object_t>;
+    struct ipc_delay_custom_data_t : public wf::custom_data_t
+    {
+        ipc_delay_object_sptr delay_obj;
+    };
+
+    wf::signal::connection_t<wf::txn::new_transaction_signal> on_new_tx =
+        [=] (wf::txn::new_transaction_signal *ev)
+    {
+        std::vector<wayfire_toplevel_view> mapping_views;
+        for (auto& obj : ev->tx->get_objects())
+        {
+            if (auto toplevel = std::dynamic_pointer_cast<wf::toplevel_t>(obj))
+            {
+                if (!toplevel->current().mapped && toplevel->pending().mapped)
+                {
+                    mapping_views.push_back(wf::toplevel_cast(wf::find_view_for_toplevel(toplevel)));
+                    wf::dassert(mapping_views.back() != nullptr,
+                        "Mapping a toplevel means there must be a corresponding view!");
+                }
+            }
+        }
+
+        for (auto& view : mapping_views)
+        {
+            if (!view->has_data<ipc_delay_custom_data_t>())
+            {
+                auto delay_data = std::make_unique<ipc_delay_custom_data_t>();
+                delay_data->delay_obj = std::make_shared<ipc_delay_object_t>(
+                    "ipc-delay-object-for-view-" + std::to_string(view->get_id()));
+                view->store_data<ipc_delay_custom_data_t>(std::move(delay_data));
+            }
+
+            auto delay_obj = view->get_data<ipc_delay_custom_data_t>()->delay_obj;
+            if (delay_obj->currently_blocking())
+            {
+                // Already blocked for mapping.
+                // This can happen if we have another transaction while the map is being blocked (for example
+                // IPC client adjusts the geometry of the view, we shouldn't block again).
+                continue;
+            }
+
+            // View is about to be mapped. We should notify the IPC clients which care about this
+            // that a view is ready for mapping.
+            send_view_to_subscribes(view, PRE_MAP_EVENT);
+
+            // Aside from sending a notification, we artificially delay the mapping of the view until
+            // the IPC clients notify us that they are ready with the view setup.
+            // Detail: we first commit the delay obj on its own. This should be a new tx which
+            // goes immediately to commit.
+            const int connected_count = signal_map[PRE_MAP_EVENT].connected_count;
+            delay_obj->set_delay(connected_count);
+            wf::get_core().tx_manager->schedule_object(delay_obj);
+
+            // Next, we add the delay obj to the current transaction, so that the toplevel map is
+            // delayed until the delay obj is ready (and it becomes ready when all IPC clients say
+            // they have set up the view).
+            ev->tx->add_object(delay_obj);
+        }
+    };
+
+    wf::ipc::method_callback_full on_client_unblock_map =
+        [=] (wf::json_t data, wf::ipc::client_interface_t *client)
+    {
+        auto view = wf::ipc::json_find_view_or_throw(data);
+        if (!view->has_data<ipc_delay_custom_data_t>())
+        {
+            return wf::ipc::json_error("View with id " + std::to_string(view->get_id()) +
+                " is not being delayed for mapping");
+        }
+
+        auto delay_obj = view->get_data<ipc_delay_custom_data_t>()->delay_obj;
+        delay_obj->reduce_delay();
+        return wf::ipc::json_ok();
     };
 };
 }

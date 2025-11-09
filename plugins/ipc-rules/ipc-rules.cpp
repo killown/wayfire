@@ -37,6 +37,8 @@ class ipc_rules_t : public wf::plugin_interface_t,
         method_repository->register_method("window-rules/get-focused-view", get_focused_view);
         method_repository->register_method("window-rules/get-focused-output", get_focused_output);
         method_repository->register_method("window-rules/close-view", close_view);
+        method_repository->register_method("window-rules/set-view-property", set_view_property);
+        method_repository->register_method("window-rules/get-view-property", get_view_property);
 
         init_input_methods(method_repository.get());
         init_utility_methods(method_repository.get());
@@ -57,6 +59,8 @@ class ipc_rules_t : public wf::plugin_interface_t,
         method_repository->unregister_method("window-rules/get-focused-output");
         method_repository->unregister_method("window-rules/get-cursor-position");
         method_repository->unregister_method("window-rules/close-view");
+        method_repository->unregister_method("window-rules/set-view-property");
+        method_repository->unregister_method("window-rules/get-view-property");
 
         fini_input_methods(method_repository.get());
         fini_utility_methods(method_repository.get());
@@ -68,7 +72,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         wf::json_t response = wf::json_t::array();
         for (auto& view : wf::get_core().get_all_views())
         {
-            wf::json_t v = view_to_json(view);
+            wf::json_t v = wf::ipc_rules::view_to_json(view);
             response.append(v);
         }
 
@@ -77,15 +81,10 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback get_view_info = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
-        if (auto view = wf::ipc::find_view_by_id(id))
-        {
-            auto response = wf::ipc::json_ok();
-            response["info"] = view_to_json(view);
-            return response;
-        }
-
-        return wf::ipc::json_error("no such view");
+        auto view     = wf::ipc::json_find_view_or_throw(data);
+        auto response = wf::ipc::json_ok();
+        response["info"] = wf::ipc_rules::view_to_json(view);
+        return response;
     };
 
     wf::ipc::method_callback get_focused_view = [=] (wf::json_t data)
@@ -93,7 +92,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         if (auto view = wf::get_core().seat->get_active_view())
         {
             auto response = wf::ipc::json_ok();
-            response["info"] = view_to_json(view);
+            response["info"] = wf::ipc_rules::view_to_json(view);
             return response;
         } else
         {
@@ -110,7 +109,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
         if (active_output)
         {
-            response["info"] = output_to_json(active_output);
+            response["info"] = wf::ipc_rules::output_to_json(active_output);
         } else
         {
             response["info"] = wf::json_t::null();
@@ -121,34 +120,123 @@ class ipc_rules_t : public wf::plugin_interface_t,
 
     wf::ipc::method_callback focus_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
-        if (auto view = wf::ipc::find_view_by_id(id))
+        auto view     = wf::ipc::json_find_view_or_throw(data);
+        auto toplevel = wf::toplevel_cast(view);
+        if (!toplevel)
         {
-            auto response = wf::ipc::json_ok();
-            auto toplevel = wf::toplevel_cast(view);
-            if (!toplevel)
-            {
-                return wf::ipc::json_error("view is not toplevel");
-            }
-
-            wf::get_core().default_wm->focus_request(toplevel);
-            return response;
+            return wf::ipc::json_error("view is not toplevel");
         }
 
-        return wf::ipc::json_error("no such view");
+        auto response = wf::ipc::json_ok();
+        wf::get_core().default_wm->focus_request(toplevel);
+        return response;
     };
 
     wf::ipc::method_callback close_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
-        if (auto view = wf::ipc::find_view_by_id(id))
+        auto view = wf::ipc::json_find_view_or_throw(data);
+        view->close();
+        return wf::ipc::json_ok();
+    };
+
+    wf::ipc::method_callback set_view_property = [=] (wf::json_t data)
+    {
+        auto view     = wf::ipc::json_find_view_or_throw(data);
+        auto property = wf::ipc::json_get_string(data, "property");
+        if (!data.has_member("value"))
         {
-            auto response = wf::ipc::json_ok();
-            view->close();
+            return wf::ipc::json_error("missing value field");
+        }
+
+        auto value = data["value"];
+        if (value.is_bool())
+        {
+            if (!view->set_property<bool>(property, value.as_bool()))
+            {
+                return wf::ipc::json_error("failed to set property " + property +
+                    " as bool value, wrong property type?");
+            }
+        } else if (value.is_int64())
+        {
+            if (!view->set_property<int64_t>(property, value.as_int64()))
+            {
+                return wf::ipc::json_error("failed to set property " + property +
+                    " as int64 value, wrong property type?");
+            }
+        } else if (value.is_uint64())
+        {
+            if (!view->set_property<uint64_t>(property, value.as_uint64()))
+            {
+                return wf::ipc::json_error("failed to set property " + property +
+                    " as uint64 value, wrong property type?");
+            }
+        } else if (value.is_string())
+        {
+            if (!view->set_property<std::string>(property, value.as_string()))
+            {
+                return wf::ipc::json_error("failed to set property " + property +
+                    " as string value, wrong property type?");
+            }
+        } else if (value.is_double())
+        {
+            if (!view->set_property<double>(property, value.as_double()))
+            {
+                return wf::ipc::json_error("failed to set property " + property +
+                    " as double value, wrong property type?");
+            }
+        } else
+        {
+            return wf::ipc::json_error("unsupported value type");
+        }
+
+        return wf::ipc::json_ok();
+    };
+
+    wf::ipc::method_callback get_view_property = [=] (wf::json_t data)
+    {
+        auto view     = wf::ipc::json_find_view_or_throw(data);
+        auto property = wf::ipc::json_get_string(data, "property");
+        if (!view->has_property(property))
+        {
+            return wf::ipc::json_error("property not found on given view");
+        }
+
+        if (auto value = view->get_property<int64_t>(property);value.has_value())
+        {
+            wf::json_t response = wf::ipc::json_ok();
+            response["value"] = value.value();
             return response;
         }
 
-        return wf::ipc::json_error("no such view");
+        if (auto value = view->get_property<uint64_t>(property);value.has_value())
+        {
+            wf::json_t response = wf::ipc::json_ok();
+            response["value"] = value.value();
+            return response;
+        }
+
+        if (auto value = view->get_property<bool>(property);value.has_value())
+        {
+            wf::json_t response = wf::ipc::json_ok();
+            response["value"] = value.value();
+            return response;
+        }
+
+        if (auto value = view->get_property<std::string>(property);value.has_value())
+        {
+            wf::json_t response = wf::ipc::json_ok();
+            response["value"] = value.value();
+            return response;
+        }
+
+        if (auto value = view->get_property<double>(property);value.has_value())
+        {
+            wf::json_t response = wf::ipc::json_ok();
+            response["value"] = value.value();
+            return response;
+        }
+
+        return wf::ipc::json_error("property has unsupported type");
     };
 
     wf::ipc::method_callback list_outputs = [=] (wf::json_t)
@@ -156,7 +244,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         wf::json_t response = wf::json_t::array();
         for (auto& output : wf::get_core().output_layout->get_outputs())
         {
-            response.append(output_to_json(output));
+            response.append(wf::ipc_rules::output_to_json(output));
         }
 
         return response;
@@ -171,13 +259,13 @@ class ipc_rules_t : public wf::plugin_interface_t,
             return wf::ipc::json_error("output not found");
         }
 
-        auto response = output_to_json(wo);
+        auto response = wf::ipc_rules::output_to_json(wo);
         return response;
     };
 
     wf::ipc::method_callback configure_view = [=] (wf::json_t data)
     {
-        auto id = wf::ipc::json_get_uint64(data, "id");
+        auto view = wf::ipc::json_find_view_or_throw(data);
         auto output_id = wf::ipc::json_get_optional_uint64(data, "output_id");
 
         if (data.has_member("geometry") && !data["geometry"].is_object())
@@ -185,13 +273,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
             return wf::ipc::json_error("invalid geometry");
         }
 
-        auto sticky = wf::ipc::json_get_optional_bool(data, "sticky");
-        auto view   = wf::ipc::find_view_by_id(id);
-        if (!view)
-        {
-            return wf::ipc::json_error("view not found");
-        }
-
+        auto sticky   = wf::ipc::json_get_optional_bool(data, "sticky");
         auto toplevel = wf::toplevel_cast(view);
         if (!toplevel)
         {
@@ -233,7 +315,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
         wf::json_t response = wf::json_t::array();
         for (auto& workspace_set : wf::workspace_set_t::get_all())
         {
-            response.append(wset_to_json(workspace_set.get()));
+            response.append(wf::ipc_rules::wset_to_json(workspace_set.get()));
         }
 
         return response;
@@ -248,7 +330,7 @@ class ipc_rules_t : public wf::plugin_interface_t,
             return wf::ipc::json_error("workspace set not found");
         }
 
-        auto response = wset_to_json(ws);
+        auto response = wf::ipc_rules::wset_to_json(ws);
         return response;
     };
 

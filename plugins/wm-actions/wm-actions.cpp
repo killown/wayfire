@@ -14,6 +14,7 @@
 #include "wayfire/signal-definitions.hpp"
 #include "wayfire/signal-provider.hpp"
 #include "wayfire/toplevel-view.hpp"
+#include <wayfire/view-helpers.hpp>
 #include "wayfire/window-manager.hpp"
 #include "wayfire/seat.hpp"
 #include "wayfire/nonstd/reverse.hpp"
@@ -48,6 +49,8 @@ class wayfire_wm_actions_output_t : public wf::per_output_plugin_instance_t
         "wm-actions/toggle_sticky"};
     wf::option_wrapper_t<wf::activatorbinding_t> send_to_back{
         "wm-actions/send_to_back"};
+    wf::option_wrapper_t<wf::activatorbinding_t> bring_to_front{
+        "wm-actions/bring_to_front"};
 
     wf::plugin_activation_data_t grab_interface = {
         .name = "wm-actions",
@@ -339,6 +342,15 @@ class wayfire_wm_actions_output_t : public wf::per_output_plugin_instance_t
         });
     };
 
+    wf::activator_callback on_bring_to_front = [=] (auto ev) -> bool
+    {
+        return execute_for_selected_view(ev.source, [] (wayfire_view view)
+        {
+            view_bring_to_front(view);
+            return true;
+        });
+    };
+
     void disable_showdesktop()
     {
         view_set_output.disconnect();
@@ -369,6 +381,7 @@ class wayfire_wm_actions_output_t : public wf::per_output_plugin_instance_t
         output->add_activator(toggle_fullscreen, &on_toggle_fullscreen);
         output->add_activator(toggle_sticky, &on_toggle_sticky);
         output->add_activator(send_to_back, &on_send_to_back);
+        output->add_activator(bring_to_front, &on_bring_to_front);
         output->connect(&on_set_above_state_signal);
         output->connect(&on_view_minimized);
         wf::get_core().connect(&on_view_output_changed);
@@ -391,6 +404,7 @@ class wayfire_wm_actions_output_t : public wf::per_output_plugin_instance_t
         output->rem_binding(&on_toggle_fullscreen);
         output->rem_binding(&on_toggle_sticky);
         output->rem_binding(&on_send_to_back);
+        output->rem_binding(&on_bring_to_front);
     }
 };
 
@@ -409,6 +423,7 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t,
         ipc_repo->register_method("wm-actions/set-fullscreen", ipc_set_fullscreen);
         ipc_repo->register_method("wm-actions/set-sticky", ipc_set_sticky);
         ipc_repo->register_method("wm-actions/send-to-back", ipc_send_to_back);
+        ipc_repo->register_method("wm-actions/bring-to-front", ipc_bring_to_front);
         toggle_showdesktop.set_handler(on_toggle_showdesktop);
     }
 
@@ -420,13 +435,14 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t,
         ipc_repo->unregister_method("wm-actions/set-fullscreen");
         ipc_repo->unregister_method("wm-actions/set-sticky");
         ipc_repo->unregister_method("wm-actions/send-to-back");
+        ipc_repo->unregister_method("wm-actions/bring-to-front");
     }
 
     wf::json_t execute_for_view(const wf::json_t& params,
         std::function<void(wayfire_toplevel_view, bool)> view_op)
     {
-        uint64_t view_id = wf::ipc::json_get_uint64(params, "view_id");
-        bool state = wf::ipc::json_get_bool(params, "state");
+        auto view_id = wf::ipc::json_get_view_id(params);
+        bool state   = wf::ipc::json_get_bool(params, "state");
         wayfire_toplevel_view view = toplevel_cast(wf::ipc::find_view_by_id(view_id));
         if (!view)
         {
@@ -442,6 +458,14 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t,
         return execute_for_view(js, [=] (wayfire_toplevel_view view, bool state)
         {
             wf::get_core().default_wm->minimize_request(view, state);
+        });
+    };
+
+    wf::ipc::method_callback ipc_bring_to_front = [=] (const wf::json_t& js)
+    {
+        return execute_for_view(js, [=] (wayfire_toplevel_view view, bool state)
+        {
+            wf::view_bring_to_front(view);
         });
     };
 
