@@ -93,6 +93,15 @@ class wayfire_wsets_plugin_t : public wf::plugin_interface_t
             return wf::ipc::json_error("view not found");
         }
 
+        auto all_wsets = wf::workspace_set_t::get_all();
+        auto it = std::find_if(all_wsets.begin(), all_wsets.end(),
+            [&] (auto wset) { return wset->get_index() == wset_index; });
+
+        if (it == all_wsets.end())
+        {
+            return wf::ipc::json_error("wset not found");
+        }
+
         send_window_to(wset_index, view);
         return wf::ipc::json_ok();
     };
