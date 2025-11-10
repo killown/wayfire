@@ -94,8 +94,11 @@ class wayfire_wsets_plugin_t : public wf::plugin_interface_t
         }
 
         auto all_wsets = wf::workspace_set_t::get_all();
+        auto target_index = static_cast<uint64_t>(wset_index);
         auto it = std::find_if(all_wsets.begin(), all_wsets.end(),
-            [&] (auto wset) { return wset->get_index() == wset_index; });
+            [&] (auto wset) { 
+                return wset->get_index() == target_index; 
+            });
 
         if (it == all_wsets.end())
         {
