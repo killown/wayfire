@@ -67,6 +67,20 @@ class tile_workspace_set_data_t : public wf::custom_data_t
         outer_vert_gaps.set_callback(update_gaps);
     }
 
+    ~tile_workspace_set_data_t()
+    {
+        for (auto& row : roots)
+        {
+            for (auto& root : row)
+            {
+                tile::for_each_view(root, [] (wayfire_toplevel_view view)
+                {
+                    view->set_allowed_actions(VIEW_ALLOW_ALL);
+                });
+            }
+        }
+    }
+
     wf::signal::connection_t<workarea_changed_signal> on_workarea_changed = [=] (auto)
     {
         update_root_size();
@@ -254,6 +268,7 @@ class tile_workspace_set_data_t : public wf::custom_data_t
         }
 
         consider_exit_fullscreen(view);
+        unmaximize_all_views_on_workspace();
     }
 
     /** Remove the given view from its tiling container */
@@ -305,16 +320,17 @@ class tile_workspace_set_data_t : public wf::custom_data_t
         }
     }
 
-    void unmaximize_all_views_on_workspace(std::shared_ptr<wf::workspace_set_t> wset)
+    void unmaximize_all_views_on_workspace()
     {
-        for (auto& view : wset->get_views())
+        auto vp = this->wset.lock()->get_current_workspace();
+        for_each_view(roots[vp.x][vp.y], [&] (wayfire_toplevel_view view)
         {
             auto node = tile::view_node_t::get_node(view);
             if (node && node->show_maximized)
             {
                 set_view_maximized(view, false);
             }
-        }
+        });
     }
 
     void set_view_fullscreen(wayfire_toplevel_view view, bool fullscreen)
