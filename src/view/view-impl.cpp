@@ -19,7 +19,7 @@
 
 void wf::view_implementation::emit_view_map_signal(wayfire_view view, bool has_position)
 {
-    wf::view_mapped_signal data;
+    wf::view_mapped_signal data = {};
     data.view = view;
 
     view->emit(&data);
@@ -33,7 +33,7 @@ void wf::view_implementation::emit_view_map_signal(wayfire_view view, bool has_p
 
 void wf::view_implementation::emit_view_map_signal(wayfire_view view)
 {
-    wf::view_mapped_signal data;
+    wf::view_mapped_signal data = {};
     data.view = view;
 
     view->emit(&data);
