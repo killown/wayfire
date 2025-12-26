@@ -208,6 +208,7 @@ static inline wf::json_t view_to_json(wayfire_view view)
         toplevel ? toplevel->toplevel()->get_max_size() : wf::dimensions_t{0, 0});
     description["focusable"] = view->is_focusable();
     description["type"] = get_view_type(view);
+    description["always-on-top"] = view->has_data("wm-actions-above");
 
     return description;
 }
