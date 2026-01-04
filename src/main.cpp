@@ -20,15 +20,22 @@
 static std::string get_version_string()
 {
     std::string version = std::string(WAYFIRE_VERSION) + "-" + wf::version::git_commit +
-           " (" + __DATE__ + ") branch " + wf::version::git_branch +
-           " wlroots-" + WLR_VERSION_STR;
+        " (" + __DATE__ + ") branch " + wf::version::git_branch +
+        " wlroots-" + WLR_VERSION_STR;
 
     auto& core = wf::get_core();
     if (core.renderer)
     {
-        if (core.is_gles2()) { version += " [gles2]"; }
-        else if (core.is_vulkan()) { version += " [vulkan]"; }
-        else if (core.is_pixman()) { version += " [pixman]"; }
+        if (core.is_gles2())
+        {
+            version += " [gles2]";
+        } else if (core.is_vulkan())
+        {
+            version += " [vulkan]";
+        } else if (core.is_pixman())
+        {
+            version += " [pixman]";
+        }
     }
 
     return version;
@@ -290,18 +297,18 @@ void parse_extended_debugging(const std::vector<std::string>& categories)
 int main(int argc, char *argv[])
 {
     /* First create display and initialize safe-list's event loop, so that
-    * wf objects (which depend on safe-list) can work */
+     * wf objects (which depend on safe-list) can work */
     auto display = wl_display_create();
     auto& core   = wf::compositor_core_impl_t::allocate_core();
     core.display = display;
-    
+
     /** TODO: move this to core_impl constructor */
-    core.ev_loop = wl_display_get_event_loop(core.display);
-    core.backend = wlr_backend_autocreate(core.ev_loop, &core.session);
+    core.ev_loop  = wl_display_get_event_loop(core.display);
+    core.backend  = wlr_backend_autocreate(core.ev_loop, &core.session);
     core.renderer = wlr_renderer_autocreate(core.backend);
 
     wf::log::log_level_t log_level = wf::log::LOG_LEVEL_INFO;
-    
+
     struct option opts[] = {
         {
             "config", required_argument, NULL, 'c'
