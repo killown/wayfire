@@ -19,9 +19,19 @@
 
 static std::string get_version_string()
 {
-    return std::string(WAYFIRE_VERSION) + "-" + wf::version::git_commit +
+    std::string version = std::string(WAYFIRE_VERSION) + "-" + wf::version::git_commit +
            " (" + __DATE__ + ") branch " + wf::version::git_branch +
            " wlroots-" + WLR_VERSION_STR;
+
+    auto& core = wf::get_core();
+    if (core.renderer)
+    {
+        if (core.is_gles2()) { version += " [gles2]"; }
+        else if (core.is_vulkan()) { version += " [vulkan]"; }
+        else if (core.is_pixman()) { version += " [pixman]"; }
+    }
+
+    return version;
 }
 
 static void print_version_and_exit()
@@ -279,7 +289,19 @@ void parse_extended_debugging(const std::vector<std::string>& categories)
 //
 int main(int argc, char *argv[])
 {
+    /* First create display and initialize safe-list's event loop, so that
+    * wf objects (which depend on safe-list) can work */
+    auto display = wl_display_create();
+    auto& core   = wf::compositor_core_impl_t::allocate_core();
+    core.display = display;
+    
+    /** TODO: move this to core_impl constructor */
+    core.ev_loop = wl_display_get_event_loop(core.display);
+    core.backend = wlr_backend_autocreate(core.ev_loop, &core.session);
+    core.renderer = wlr_renderer_autocreate(core.backend);
+
     wf::log::log_level_t log_level = wf::log::LOG_LEVEL_INFO;
+    
     struct option opts[] = {
         {
             "config", required_argument, NULL, 'c'
@@ -408,18 +430,9 @@ int main(int argc, char *argv[])
     });
 
     LOGI("Starting wayfire: ", get_version_string());
-    /* First create display and initialize safe-list's event loop, so that
-     * wf objects (which depend on safe-list) can work */
-    auto display = wl_display_create();
-    auto& core   = wf::compositor_core_impl_t::allocate_core();
 
     core.argc = argc;
     core.argv = argv;
-
-    /** TODO: move this to core_impl constructor */
-    core.display = display;
-    core.ev_loop = wl_display_get_event_loop(core.display);
-    core.backend = wlr_backend_autocreate(core.ev_loop, &core.session);
 
     int drm_fd = -1;
     char *drm_device = getenv("WLR_RENDER_DRM_DEVICE");
@@ -447,7 +460,6 @@ int main(int argc, char *argv[])
     }
 
     // core.renderer = wlr_vk_renderer_create_with_drm_fd(drm_fd);
-    core.renderer = wlr_renderer_autocreate(core.backend);
     // core.renderer = wlr_pixman_renderer_create();
     // core.renderer = wlr_gles2_renderer_create_with_drm_fd(drm_fd);
     if (!core.renderer)
