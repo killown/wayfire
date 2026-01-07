@@ -31,9 +31,10 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 ## Screenshots / Videos / Stacktrace
-If applicable, add screenshots or videos to help explain your problem.  
-If Wayfire crashes, attach the backtrace (or the whole log file). Wayfire prints it at the end of the log file or to stdout.  
-Backtrace with address sanitizer enabled is especially helpful if possible.
+If applicable, add screenshots or videos to help explain the issue.  
+If Wayfire crashes, attach the backtrace (or the entire log file).  
+A backtrace with AddressSanitizer enabled is especially helpful.  
+For more information on debugging: [Wayfire Debugging Guide](https://github.com/WayfireWM/wayfire/wiki/Debugging-problems).
 
 - [ ] Screenshots / videos attached
 - [ ] Stacktrace / logs attached
