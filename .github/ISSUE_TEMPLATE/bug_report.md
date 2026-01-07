@@ -5,15 +5,15 @@ title: ''
 labels: bug
 assignees: ''
 
-## GPU / Hardware
-Please specify your GPU model and any other relevant hardware information (CPU, RAM, etc.).
-
-- [ ] GPU info attached
-
 ## Wayfire version
 0.10 (or specify your build/package if different)
 
 - [ ] Version confirmed
+
+## GPU / Hardware
+Please specify your GPU model.
+
+- [ ] GPU info attached
 
 ## Describe the bug
 A clear and concise description of what the bug is. Include what happens and any unusual behavior or errors.
