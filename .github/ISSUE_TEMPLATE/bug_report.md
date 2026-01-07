@@ -5,24 +5,40 @@ title: ''
 labels: bug
 assignees: ''
 
----
+## GPU / Hardware
+Please specify your GPU model and any other relevant hardware information (CPU, RAM, etc.).
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+- [ ] GPU info attached
 
-**To Reproduce**
+## Wayfire version
+0.10 (or specify your build/package if different)
+
+- [ ] Version confirmed
+
+## Describe the bug
+A clear and concise description of what the bug is. Include what happens and any unusual behavior or errors.
+
+## To Reproduce
 Steps to reproduce the behavior:
-1. Enable plugin X
-2. Do Y
-3. Z happens
 
-**Expected behavior**
+1. Enable plugin `X`
+2. Perform action `Y`
+3. Observe `Z` happening
+
+- [ ] Steps to reproduce confirmed
+
+## Expected behavior
 A clear and concise description of what you expected to happen.
 
-**Screenshots or stacktrace**
-If applicable, add screenshots to help explain your problem.
-If it is a crash, attach the backtrace (or the whole log file), Wayfire will print it in the end of the log file or stdout.
-Backtrace with address sanitizer enabled (if possible):
+## Screenshots / Videos / Stacktrace
+If applicable, add screenshots or videos to help explain your problem.  
+If Wayfire crashes, attach the backtrace (or the whole log file). Wayfire prints it at the end of the log file or to stdout.  
+Backtrace with address sanitizer enabled is especially helpful if possible.
 
-**Wayfire version**
-0.5.0, git, package, something else?
+- [ ] Screenshots / videos attached
+- [ ] Stacktrace / logs attached
+
+## Additional context
+Add any other context about the problem here (optional).
+
+
