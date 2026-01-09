@@ -5,24 +5,35 @@ title: ''
 labels: bug
 assignees: ''
 
----
+## Wayfire version
+(Specify version, e.g., 0.10, or provide the output of `wayfire --version`)
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## GPU / Driver
+Please provide your GPU model and driver version. This information can be found in:
+- `vulkaninfo --summary`
+- `glxinfo -B`
 
-**To Reproduce**
+## Describe the bug
+A clear and concise description of what the bug is. Include what happens and any unusual behavior or errors.
+
+## To Reproduce
 Steps to reproduce the behavior:
-1. Enable plugin X
-2. Do Y
-3. Z happens
 
-**Expected behavior**
+1. Enable plugin `X`
+2. Perform action `Y`
+3. Observe `Z` happening
+
+## Expected behavior
 A clear and concise description of what you expected to happen.
 
-**Screenshots or stacktrace**
-If applicable, add screenshots to help explain your problem.
-If it is a crash, attach the backtrace (or the whole log file), Wayfire will print it in the end of the log file or stdout.
-Backtrace with address sanitizer enabled (if possible):
+## Screenshots / Videos / Stacktrace
+If applicable, add screenshots or videos to help explain the issue.  
+If Wayfire crashes, attach the backtrace (or the entire log file).  
+A backtrace with AddressSanitizer enabled is especially helpful.  
 
-**Wayfire version**
-0.5.0, git, package, something else?
+For more information on debugging: [Wayfire Debugging Guide](https://github.com/WayfireWM/wayfire/wiki/Debugging-problems).
+
+## Additional context
+Add any other context about the problem here (optional).
+
+
