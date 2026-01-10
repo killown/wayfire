@@ -69,7 +69,7 @@ class xwayland_view_controller_t
 
         on_map.set_callback([&] (void*)
         {
-            LOGE("new xwayland surface ", xw->title, " class: ", xw->class_t, " instance: ", xw->instance);
+            LOGC(VIEWS, "new xwayland surface ", xw->title, " class: ", xw->class_t, " instance: ", xw->instance);
             wf::view_pre_map_signal pre_map;
             pre_map.view    = view.get();
             pre_map.surface = xw->surface;
