@@ -191,14 +191,15 @@ void wayfire_window_rules_t::setup_rules_from_config()
             _lexer.reset(rule_str);
             auto rule = wf::rule_parser_t().parse(_lexer);
 
-            if (rule == nullptr) {
+            if (rule == nullptr)
+            {
                 LOGW("Failed to parse rule: ", rule_str);
                 continue;
             }
 
             _rules.push_back(rule);
-        }
-        catch (const std::exception& e) {
+        } catch (const std::exception& e)
+        {
             LOGE("Error parsing rule: ", rule_str, " Exception: ", e.what());
         }
     }
